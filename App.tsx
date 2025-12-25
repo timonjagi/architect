@@ -9,7 +9,9 @@ import {
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, ShieldAlert, BadgeCheck,
   ChevronDown, ChevronUp, ArrowRight, ArrowLeft, Share2, MousePointer2, 
   Table2, Layout, FormInput, BellRing, UserCheck, HardDriveDownload, ChevronLeft,
-  Filter, CreditCard, Layers, Briefcase, Boxes, Rocket, Shield, Megaphone, Monitor
+  Filter, CreditCard, Layers, Briefcase, Boxes, Rocket, Shield, Megaphone, Monitor,
+  Quote, Star, CheckCircle2, HelpCircle, MailCheck, Building2, BarChart, History,
+  Image as ImageIcon, CreditCard as CardIcon, MapPin, BadgePercent, PackageSearch
 } from 'lucide-react';
 import { Framework, Styling, Backend, Tooling, PromptConfig, OptimizationResult, Source, NotificationProvider, TaskItem, SelectedBlueprint } from './types';
 import { optimizePrompt } from './services/geminiService';
@@ -35,6 +37,7 @@ const CATEGORIES = [
 ];
 
 const BLUEPRINTS: Blueprint[] = [
+  // SaaS Core
   {
     id: 'auth-multi-tenant',
     category: 'saas',
@@ -61,32 +64,157 @@ const BLUEPRINTS: Blueprint[] = [
       { id: 'portal', label: 'Customer Portal', description: 'Self-serve billing management for users.' }
     ]
   },
+  
+  // Application (Dashboards) Components
   {
-    id: 'eco-product-grid',
+    id: 'app-nav',
+    category: 'application',
+    name: 'Application Shell',
+    icon: <Layout className="w-4 h-4" />,
+    badge: 'Navigation',
+    prompt: "Primary application structure with sidebars and global navigation.",
+    subcategories: [
+      { id: 'sidebar', label: 'Persistent Sidebar', description: 'Multi-level navigation with pinned/collapsed states.' },
+      { id: 'command', label: 'Command Bar (CMD+K)', description: 'Global search and quick action palette.' },
+      { id: 'header', label: 'Contextual Header', description: 'Dynamic breadcrumbs and user profile menu.' }
+    ]
+  },
+  {
+    id: 'app-tables',
+    category: 'application',
+    name: 'Data Management',
+    icon: <Table2 className="w-4 h-4" />,
+    badge: 'Admin',
+    prompt: "Feature-rich data grids for managing complex resources.",
+    subcategories: [
+      { id: 'filters', label: 'Faceted Search', description: 'Advanced filtering, sorting, and saved views logic.' },
+      { id: 'bulk', label: 'Bulk Actions', description: 'Multi-select logic for batch processing records.' },
+      { id: 'inline', label: 'Inline Editing', description: 'Direct field updates without leaving the table view.' }
+    ]
+  },
+  {
+    id: 'app-dashboards',
+    category: 'application',
+    name: 'Analytics Panels',
+    icon: <BarChart className="w-4 h-4" />,
+    badge: 'Insights',
+    prompt: "Visual data representation and metric tracking dashboards.",
+    subcategories: [
+      { id: 'stats', label: 'KPI Card Grid', description: 'Snapshot cards with trend indicators and sparklines.' },
+      { id: 'charts', label: 'Interactive Charts', description: 'TimeSeries, Bar, and Pie charts with tooltips.' },
+      { id: 'activity', label: 'Activity Feed', description: 'Real-time event log for system or user actions.' }
+    ]
+  },
+  {
+    id: 'app-settings',
+    category: 'application',
+    name: 'Account Settings',
+    icon: <Settings2 className="w-4 h-4" />,
+    badge: 'Preferences',
+    prompt: "User profile, organization settings, and security controls.",
+    subcategories: [
+      { id: 'profile', label: 'Profile Editor', description: 'Avatar management and personal information forms.' },
+      { id: 'security', label: 'Security Center', description: 'Password reset, 2FA, and active session management.' },
+      { id: 'billing', label: 'Invoicing & History', description: 'Subscription details and downloadable PDF receipts.' }
+    ]
+  },
+  {
+    id: 'app-feedback',
+    category: 'application',
+    name: 'Notification Hub',
+    icon: <BellRing className="w-4 h-4" />,
+    badge: 'Messaging',
+    prompt: "In-app alerts and notification management systems.",
+    subcategories: [
+      { id: 'center', label: 'Notification List', description: 'Unread indicators and mark-all-as-read logic.' },
+      { id: 'toasts', label: 'Real-time Toasts', description: 'Ephemeral feedback for user success/error states.' },
+      { id: 'prefs', label: 'Delivery Prefs', description: 'Granular controls for Email vs. Push notifications.' }
+    ]
+  },
+
+  // E-commerce Components
+  {
+    id: 'eco-catalog',
     category: 'ecommerce',
-    name: 'Discovery Catalog',
+    name: 'Product Discovery',
     icon: <Store className="w-4 h-4" />,
     badge: 'Storefront',
-    prompt: "High-performance product listing with search, filters, and dynamic sorting.",
+    prompt: "Browsing and search experience for product catalogs.",
     subcategories: [
-      { id: 'faceted', label: 'Faceted Filters', description: 'Category, price, and attribute filtering logic.' },
-      { id: 'virt-grid', label: 'Virtual Grid', description: 'Virtualized list for large product catalogs.' },
-      { id: 'search', label: 'Instant Search', description: 'Real-time keyword matching across inventory.' }
+      { id: 'filters', label: 'Faceted Filters', description: 'Filtering by size, color, price, and category.' },
+      { id: 'grid', label: 'Smart Grids', description: 'Lazy-loading or paginated layouts with hover effects.' },
+      { id: 'search', label: 'Instant Search', description: 'Type-ahead suggestions and keyword matching.' }
+    ]
+  },
+  {
+    id: 'eco-product',
+    category: 'ecommerce',
+    name: 'Product Details',
+    icon: <PackageSearch className="w-4 h-4" />,
+    badge: 'Inventory',
+    prompt: "Deep-dive product pages with conversion focus.",
+    subcategories: [
+      { id: 'gallery', label: 'Image Gallery', description: 'Zoomable product photos and video support.' },
+      { id: 'variants', label: 'Variant Selection', description: 'SKU-level logic for size, color, and stock.' },
+      { id: 'reviews', label: 'Rating System', description: 'Customer reviews with photo uploads and helpfulness votes.' }
     ]
   },
   {
     id: 'eco-checkout',
     category: 'ecommerce',
-    name: 'Unified Checkout',
+    name: 'Checkout Funnel',
     icon: <Truck className="w-4 h-4" />,
     badge: 'Conversion',
-    prompt: "Optimized multi-step checkout with address validation and payment processing.",
+    prompt: "Optimized multi-step flow from cart to confirmation.",
     subcategories: [
-      { id: 'cart-logic', label: 'Atomic Cart', description: 'Persistent local storage or DB synced shopping cart.' },
-      { id: 'shipping', label: 'Shipping Rates', description: 'Integration with carriers for real-time calculation.' },
-      { id: 'guest', label: 'Guest Checkout', description: 'Allow orders without mandatory user accounts.' }
+      { id: 'cart', label: 'Persistent Cart', description: 'Session-synced cart with promo code logic.' },
+      { id: 'flow', label: 'Multi-step Pay', description: 'Shipping, address validation, and payment steps.' },
+      { id: 'upsell', label: 'Cross-selling', description: 'Post-purchase or in-cart product recommendations.' }
     ]
   },
+  {
+    id: 'eco-account',
+    category: 'ecommerce',
+    name: 'Customer Portal',
+    icon: <Users className="w-4 h-4" />,
+    badge: 'Loyalty',
+    prompt: "User history and personalized shopping workspace.",
+    subcategories: [
+      { id: 'orders', label: 'Order Tracking', description: 'Status updates, tracking links, and history.' },
+      { id: 'wishlist', label: 'Saved Items', description: 'Favorites list with "Notify on Sale" logic.' },
+      { id: 'address', label: 'Address Book', description: 'Management of multiple shipping and billing profiles.' }
+    ]
+  },
+
+  // Marketing Components
+  {
+    id: 'mkt-hero',
+    category: 'marketing',
+    name: 'Conversion Hero',
+    icon: <Rocket className="w-4 h-4" />,
+    badge: 'Landing',
+    prompt: "High-impact hero section with clear CTAs and social proof.",
+    subcategories: [
+      { id: 'split', label: 'Split Layout', description: 'Visual on one side, copy on the other with CTA.' },
+      { id: 'centered', label: 'Centered Stack', description: 'Impactful centered typography for high focus.' },
+      { id: 'video-bg', label: 'Video Ambient', description: 'Support for muted background video loops.' }
+    ]
+  },
+  {
+    id: 'mkt-features',
+    category: 'marketing',
+    name: 'Feature Showcase',
+    icon: <CheckCircle2 className="w-4 h-4" />,
+    badge: 'Product',
+    prompt: "Comprehensive feature grids and detailed capability sections.",
+    subcategories: [
+      { id: 'grid', label: 'Icon Grid', description: 'Responsive grid with icons, titles, and descriptions.' },
+      { id: 'side-by-side', label: 'Detailed Rows', description: 'Alternating image/text rows for deep-dives.' },
+      { id: 'tabs', label: 'Feature Tabs', description: 'Switchable content views for complex products.' }
+    ]
+  },
+
+  // AI & Data
   {
     id: 'ai-rag-pipeline',
     category: 'ai',
@@ -100,71 +228,8 @@ const BLUEPRINTS: Blueprint[] = [
       { id: 'stream', label: 'Chat Streaming', description: 'Real-time UI updates for model responses.' }
     ]
   },
-  {
-    id: 'ai-workbench',
-    category: 'ai',
-    name: 'Agent Playground',
-    icon: <Terminal className="w-4 h-4" />,
-    badge: 'Workflows',
-    prompt: "Collaborative workbench for designing and testing AI agent prompts.",
-    subcategories: [
-      { id: 'logs', label: 'Prompt Logs', description: 'Version history and performance tracking.' },
-      { id: 'tokens', label: 'Cost Monitor', description: 'Token-based usage tracking per project.' },
-      { id: 'tools', label: 'Function Calling', description: 'Dynamic tool definition for agent interaction.' }
-    ]
-  },
-  {
-    id: 'mkt-hero',
-    category: 'marketing',
-    name: 'Conversion Hero',
-    icon: <Rocket className="w-4 h-4" />,
-    badge: 'Landing',
-    prompt: "High-impact hero section with clear CTAs and social proof.",
-    subcategories: [
-      { id: 'ab', label: 'A/B Testing', description: 'Logic for serving variant headlines.' },
-      { id: 'scroll', label: 'Parallax Effects', description: 'Subtle scroll-triggered animations.' },
-      { id: 'cta', label: 'Primary Action', description: 'Focus-grabbing primary button components.' }
-    ]
-  },
-  {
-    id: 'mkt-pricing',
-    category: 'marketing',
-    name: 'Premium Tables',
-    icon: <Table2 className="w-4 h-4" />,
-    badge: 'Growth',
-    prompt: "Interactive pricing comparisons with feature checklists and toggle billing.",
-    subcategories: [
-      { id: 'toggle', label: 'Annual Toggle', description: 'Smooth switch between monthly/yearly billing.' },
-      { id: 'highlight', label: 'Popular Badge', description: 'Visual emphasis for high-conversion tiers.' },
-      { id: 'faq', label: 'Context FAQ', description: 'Inline answers for common billing questions.' }
-    ]
-  },
-  {
-    id: 'app-shell',
-    category: 'application',
-    name: 'Workspace Shell',
-    icon: <Layout className="w-4 h-4" />,
-    badge: 'Layout',
-    prompt: "Enterprise-ready application shell with sidebar, breadcrumbs, and command bar.",
-    subcategories: [
-      { id: 'k-bar', label: 'Command Menu', description: 'Global CMD+K search and navigation palette.' },
-      { id: 'sidebar', label: 'Pinned Nav', description: 'Stateful, collapsible side navigation.' },
-      { id: 'notif', label: 'Toast Stack', description: 'Unified notification event bus for feedback.' }
-    ]
-  },
-  {
-    id: 'app-data-grid',
-    category: 'application',
-    name: 'Management Table',
-    icon: <Table2 className="w-4 h-4" />,
-    badge: 'Admin',
-    prompt: "Rich data table with bulk actions, CSV export, and inline editing.",
-    subcategories: [
-      { id: 'bulk', label: 'Multi-Select', description: 'Checkbox-based batch status updates.' },
-      { id: 'filters', label: 'Save Views', description: 'User-specific custom filter persistence.' },
-      { id: 'export', label: 'Data Sync', description: 'Logic for downloading filtered JSON/CSV.' }
-    ]
-  },
+
+  // Infrastructure
   {
     id: 'sys-notifications',
     category: 'system',
@@ -409,7 +474,6 @@ const App: React.FC = () => {
                       return (
                         <button key={bp.id} onClick={() => {
                           setSelectedBlueprintForModal(bp);
-                          // Reset selection for new blueprint modal open
                           setSelectedSubs(activeBlueprints.find(ab => ab.blueprintId === bp.id)?.selectedSubLabels.map(l => 
                             bp.subcategories.find(s => s.label === l)?.id || ''
                           ).filter(id => id !== '') || []);
@@ -652,7 +716,7 @@ const App: React.FC = () => {
           <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-8 py-8 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-5">
-                <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">{selectedBlueprintForModal.icon}</div>
+                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">{selectedBlueprintForModal.icon}</div>
                 <div>
                   <h3 className="text-lg font-black text-white uppercase tracking-tight">{selectedBlueprintForModal.name}</h3>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Select Sub-Modules</p>
@@ -683,7 +747,6 @@ const App: React.FC = () => {
               <button onClick={() => setSelectedBlueprintForModal(null)} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-colors">Cancel</button>
               <button onClick={() => {
                 const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
-                // If no subcategories selected, we mark it as 'Core Architecture'
                 const finalLabels = labels.length > 0 ? labels : ['Core Feature Context'];
                 
                 setActiveBlueprints(prev => {
