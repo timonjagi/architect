@@ -1,7 +1,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import RootLayout from './app/layout.tsx';
+import Home from './app/page.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -11,6 +12,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <RootLayout>
+      <Home />
+    </RootLayout>
   </React.StrictMode>
 );
