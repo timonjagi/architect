@@ -17,7 +17,7 @@ export const optimizePrompt = async (
     : 'No specific blueprints selected.';
 
   const systemInstruction = `
-    You are a Principal Software Architect. Your goal is to generate a "Speckit" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
+    You are a Principal Software Architect. Your goal is to generate an "Architect Specification" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
 
     YOUR OUTPUT MUST FOLLOW THE DEPTH OF A MASTER BACKLOG:
     1. Break the feature into logical, atomic Tasks.
@@ -83,6 +83,6 @@ export const optimizePrompt = async (
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Optimization failed:", error);
-    throw new Error("Failed to generate Speckit.");
+    throw new Error("Failed to generate Architect Specification.");
   }
 };

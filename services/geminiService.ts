@@ -17,13 +17,13 @@ export const optimizePrompt = async (
     : 'No specific blueprints selected. Build according to general best practices for the chosen stack.';
 
   const systemInstruction = `
-    You are a Principal Software Architect. Your goal is to generate a "Speckit" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
+    You are a Principal Software Architect. Your goal is to generate an "Architect Specification" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
 
     YOUR OUTPUT MUST FOLLOW THE DEPTH OF A MASTER BACKLOG:
     1. Break the feature into logical, atomic Tasks.
     2. Each Task must have:
        - 'details': Exact implementation logic, edge cases to handle, and API patterns.
-       - 'testStrategy': Step-by-step verification (e.g., "Check Supabase RLS by trying to access ID 123 from User B").
+       - 'testStrategy': Step-by-step verification.
        - 'priority': high/medium/low.
        - 'files_involved': Specific paths.
 
@@ -42,13 +42,13 @@ export const optimizePrompt = async (
     INSTRUCTIONS:
     - Prioritize the 'SELECTED ARCHITECTURAL MODULES' when designing the system.
     - If user provides 'Additional Requirements', integrate them into the architectural plan.
-    - Focus on self-hostable, modern patterns (e.g., Row Level Security in DB, Server Actions in Next.js).
+    - Focus on self-hostable, modern patterns.
 
     OUTPUT JSON STRUCTURE:
-    - coldStartGuide: Markdown for initial environment setup, essential library installs, and core boilerplate files.
+    - coldStartGuide: Markdown for initial environment setup.
     - directoryStructure: Text-based tree representing the file organization.
     - implementationPlan: Array of TaskItem objects representing the step-by-step build phases.
-    - architectureNotes: Critical system boundaries, performance constraints, and state management strategy.
+    - architectureNotes: Critical system boundaries and performance constraints.
     - fullMarkdownSpec: Complete spec as one string formatted for easy reading.
   `;
 
@@ -91,6 +91,6 @@ export const optimizePrompt = async (
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Optimization failed:", error);
-    throw new Error("Failed to generate Speckit.");
+    throw new Error("Failed to generate Architect Specification.");
   }
 };

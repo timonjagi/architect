@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -157,6 +156,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     });
   };
 
+  const activeCategoryLabel = useMemo(() => {
+    return CATEGORIES.find(c => c.id === activeCategory)?.label;
+  }, [activeCategory]);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-white/20">
       <header className="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-950 shrink-0 sticky top-0 z-40">
@@ -165,10 +168,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <div className="bg-white p-1 rounded-md">
               <Code2 className="w-4 h-4 text-slate-950" />
             </div>
-            <span className="text-sm font-bold tracking-tight text-white uppercase">DevPrompt</span>
+            <span className="text-sm font-bold tracking-tight text-white uppercase">Architect</span>
           </button>
           <div className="h-4 w-px bg-slate-800 mx-2 hidden md:block" />
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">Architect Dashboard</div>
+          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">System Configurator</div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Status: Connected</div>
@@ -186,8 +189,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </h2>
                 
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setIsFilterModalOpen(true)} className={`h-11 px-4 rounded-md border flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${activeCategory !== 'all' ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}>
-                    <Filter className="w-3.5 h-3.5" /> Filter
+                  <button onClick={() => setIsFilterModalOpen(true)} className={`h-11 px-4 rounded-md border flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${activeCategory !== 'all' ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}>
+                    <Filter className="w-3.5 h-3.5" /> Filter {activeCategory !== 'all' && `(${activeCategoryLabel})`}
                   </button>
                   <div className="flex-1 flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-md px-4 h-11 focus-within:border-slate-500 transition-all">
                     <Search className="w-4 h-4 text-slate-500" />
@@ -216,24 +219,46 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </div>
                 {totalPages > 1 && (
                   <div className="mt-6 pt-4 border-t border-slate-900 flex items-center justify-between">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 bg-slate-900 border border-slate-800 rounded-md"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
                     <span className="text-[10px] font-black text-slate-600 uppercase">Page {currentPage} of {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 bg-slate-900 border border-slate-800 rounded-md"><ChevronRight className="w-4 h-4" /></button>
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors"><ChevronRight className="w-4 h-4" /></button>
                   </div>
                 )}
               </div>
 
-              {activeBlueprints.length > 0 && (
-                <div className="mt-8 pt-6 border-t border-slate-800">
-                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Boxes className="w-3.5 h-3.5" /> Selected Context</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {activeBlueprints.map(ab => (
-                      <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest">
-                        {ab.name}
-                        <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+              {(activeCategory !== 'all' || activeBlueprints.length > 0) && (
+                <div className="mt-8 pt-6 border-t border-slate-800 space-y-6">
+                  {activeCategory !== 'all' && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Filter className="w-3.5 h-3.5" /> Active Filter
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-md text-[9px] font-black text-indigo-400 group uppercase tracking-widest shadow-sm">
+                          Category: {activeCategoryLabel}
+                          <button onClick={() => setActiveCategory('all')} className="text-indigo-400/60 hover:text-indigo-400 transition-colors ml-1">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {activeBlueprints.length > 0 && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Boxes className="w-3.5 h-3.5" /> Selected Modules
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {activeBlueprints.map(ab => (
+                          <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
+                            {ab.name}
+                            <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -308,7 +333,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700" 
               />
               <button onClick={handleOptimize} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim() && sources.length === 0)} className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl">
-                {loading ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Speckit</>}
+                {loading ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
               </button>
             </section>
           </div>
@@ -317,7 +342,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             {!result && !loading ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-900 rounded-xl bg-slate-950/40 min-h-[500px]">
                 <PlayCircle className="w-16 h-16 text-slate-900 mb-6" />
-                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Plan Board</h3>
+                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Architect Board</h3>
                 <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Select modules to build a production-ready implementation plan.</p>
               </div>
             ) : loading ? (
@@ -344,7 +369,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       <div className="p-6 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-5">
                         <div className="p-3 bg-white rounded-md text-slate-950 shrink-0"><PlayCircle className="w-5 h-5" /></div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Kickoff Strategy</h4>
+                          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Architectural Kickoff</h4>
                           <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">{result?.coldStartGuide}</div>
                         </div>
                       </div>
@@ -365,7 +390,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
           <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">Stack Config</h3>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Architect Stack Config</h3>
               <button onClick={() => setIsStackModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             
@@ -410,17 +435,29 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       {isFilterModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-lg p-6 space-y-4 shadow-2xl">
+          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-lg p-8 space-y-6 shadow-2xl relative">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">Categories</h3>
-              <button onClick={() => setIsFilterModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+              <div className="flex items-center gap-3">
+                <Filter className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Architectural Categories</h3>
+              </div>
+              <button onClick={() => setIsFilterModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-md text-[10px] font-black uppercase border transition-all ${activeCategory === cat.id ? 'bg-white border-white text-slate-950' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}>
-                  {cat.label} {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto" />}
+                <button 
+                  key={cat.id} 
+                  onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }} 
+                  className={`flex items-center gap-4 px-5 py-4 rounded-xl text-[10px] font-black uppercase border transition-all ${activeCategory === cat.id ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-2 ring-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}`}
+                >
+                  <span className={`${activeCategory === cat.id ? 'text-white' : 'text-slate-500'}`}>{cat.icon}</span>
+                  {cat.label}
+                  {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto" />}
                 </button>
               ))}
+            </div>
+            <div className="pt-4 border-t border-slate-900">
+              <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest italic text-center">Select a category to refine available modules</p>
             </div>
           </div>
         </div>

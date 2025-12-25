@@ -19,7 +19,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
             <div className="bg-white p-1.5 rounded-lg">
               <Code2 className="w-5 h-5 text-slate-950" />
             </div>
-            <span className="font-black text-lg tracking-tighter text-white uppercase">DevPrompt</span>
+            <span className="font-black text-lg tracking-tighter text-white uppercase">Architect</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest">Features</a>
@@ -40,7 +40,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
         <div className="max-w-7xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <Sparkles className="w-4 h-4 text-white" />
-            The Future of Spec Engineering
+            The Future of System Design
           </div>
           <h1 className="text-5xl md:text-8xl font-black text-white tracking-tight leading-[0.95] mb-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             From Idea to <br />
@@ -88,7 +88,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24">
             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight uppercase mb-6">Engineered for Complexity</h2>
-            <p className="text-slate-400 max-w-xl mx-auto font-medium">DevPrompt isn't just a text box. It's an IDE for system specifications.</p>
+            <p className="text-slate-400 max-w-xl mx-auto font-medium">Architect isn't just a text box. It's an IDE for system specifications.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
@@ -161,10 +161,10 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
             <div className="bg-white p-1 rounded-md">
               <Code2 className="w-4 h-4 text-slate-950" />
             </div>
-            <span className="font-bold text-sm tracking-tight text-white uppercase">DevPrompt</span>
+            <span className="font-bold text-sm tracking-tight text-white uppercase">Architect</span>
           </div>
           <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-            © 2024 DevPrompt Optimizer. Built for the era of AI-native engineering.
+            © 2024 Architect. Built for the era of AI-native engineering.
           </p>
         </div>
       </footer>
