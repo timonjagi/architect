@@ -1,54 +1,59 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { PromptConfig, OptimizationResult } from "./types";
+import { PromptConfig, OptimizationResult } from "./types.ts";
 
+/**
+ * Transforms a developer requirement into a high-fidelity implementation specification.
+ */
 export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
 ): Promise<OptimizationResult> => {
-  // Initialize inside the function to avoid top-level process.env reference crash
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Always initialize with named parameter for apiKey right before the request
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please ensure your environment is configured.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const sourcesContext = config.sources.length > 0 
     ? `PROJECT DOCUMENTS PROVIDED:\n${config.sources.map(s => `--- ${s.name} ---\n${s.content}`).join('\n\n')}`
     : '';
 
   const blueprintContext = config.selectedBlueprints?.length 
-    ? `SELECTED ARCHITECTURAL MODULES (PRIMARY CONTEXT):\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.selectedSubLabels.join(', ')}`).join('\n')}`
+    ? `SELECTED ARCHITECTURAL MODULES:\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.selectedSubLabels.join(', ')}`).join('\n')}`
     : 'No specific blueprints selected.';
 
   const systemInstruction = `
-    You are a Principal Software Architect. Your goal is to generate an "Architect Specification" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
+    You are a Principal Software Architect. Generate a high-fidelity "Architect Specification" (JSON).
+    Break down requirements into atomic tasks with logic, test strategies, and priority.
 
-    YOUR OUTPUT MUST FOLLOW THE DEPTH OF A MASTER BACKLOG:
-    1. Break the feature into logical, atomic Tasks.
-    2. Each Task must have detailed logic, test strategies, and priority.
-
-    CORE ARCHITECTURE SELECTION:
+    CORE CONTEXT:
     ${blueprintContext}
 
     ${sourcesContext}
 
-    TECH STACK (MANDATORY):
+    TECH STACK:
     - Framework: ${config.framework}
     - Styling: ${config.styling}
     - Backend: ${config.backend}
     - Tooling: ${config.tooling.join(', ')}
-    - Notification Providers: ${config.providers?.join(', ') || 'Standard Web'}
-    - Payment Providers: ${config.payments?.join(', ') || 'Not applicable'}
+    - Notifications: ${config.providers?.join(', ') || 'Default'}
 
-    OUTPUT JSON STRUCTURE:
-    - coldStartGuide: Markdown for environment setup.
-    - directoryStructure: Text-based tree representing file organization.
-    - implementationPlan: Array of TaskItem objects.
-    - architectureNotes: System boundaries and constraints.
-    - fullMarkdownSpec: Complete spec as one string.
+    OUTPUT SCHEMA:
+    {
+      "coldStartGuide": "Markdown for setup",
+      "directoryStructure": "ASCII tree",
+      "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies" }],
+      "architectureNotes": "Boundaries/constraints",
+      "fullMarkdownSpec": "Combined markdown doc"
+    }
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: `Additional User Instructions: "${rawPrompt || 'Build according to selected blueprints.'}"`,
+      contents: `Prompt: ${rawPrompt || 'Design the system based on selected modules.'}`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -70,7 +75,8 @@ export const optimizePrompt = async (
                   priority: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
                   files_involved: { type: Type.ARRAY, items: { type: Type.STRING } },
                   dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
+                },
+                required: ["id", "title", "description"]
               }
             },
             architectureNotes: { type: Type.STRING },
@@ -81,9 +87,11 @@ export const optimizePrompt = async (
       }
     });
 
-    return JSON.parse(response.text || '{}');
+    const text = response.text;
+    if (!text) throw new Error("Received empty response from Gemini.");
+    return JSON.parse(text);
   } catch (error) {
-    console.error("Optimization failed:", error);
-    throw new Error("Failed to generate Architect Specification.");
+    console.error("Architecture optimization failed:", error);
+    throw new Error(error instanceof Error ? error.message : "Failed to generate system specification.");
   }
 };

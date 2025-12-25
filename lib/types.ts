@@ -1,4 +1,3 @@
-
 export type Framework = 'React' | 'Next.js' | 'Vue 3' | 'SvelteKit' | 'Astro';
 export type Styling = 'Tailwind CSS' | 'Shadcn/UI' | 'Chakra UI' | 'Styled Components' | 'CSS Modules';
 export type Backend = 'Supabase' | 'Appwrite' | 'Pocketbase' | 'PostgreSQL' | 'N8N (Workflows)';

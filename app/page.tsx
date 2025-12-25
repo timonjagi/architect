@@ -1,20 +1,26 @@
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { LandingView } from './components/LandingView.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
 
+/**
+ * Main application entry point using state-based navigation.
+ * This avoids common routing issues in static deployment environments.
+ */
 export default function Home() {
-  const [currentView, setCurrentView] = useState<'landing' | 'app'>('landing');
+  const [view, setView] = useState<'landing' | 'app'>('landing');
+
+  const showApp = useCallback(() => setView('app'), []);
+  const showLanding = useCallback(() => setView('landing'), []);
 
   return (
-    <main className="min-h-screen bg-slate-950">
-      {currentView === 'landing' ? (
-        <LandingView onStart={() => setCurrentView('app')} />
+    <div className="w-full min-h-screen">
+      {view === 'landing' ? (
+        <LandingView onStart={showApp} />
       ) : (
-        <DashboardView onBack={() => setCurrentView('landing')} />
+        <DashboardView onBack={showLanding} />
       )}
-    </main>
+    </div>
   );
 }
