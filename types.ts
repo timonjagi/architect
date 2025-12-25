@@ -12,6 +12,12 @@ export interface Source {
   type: string;
 }
 
+export interface SelectedBlueprint {
+  blueprintId: string;
+  name: string;
+  selectedSubLabels: string[];
+}
+
 export interface PromptConfig {
   framework: Framework;
   styling: Styling;
@@ -20,10 +26,24 @@ export interface PromptConfig {
   providers: NotificationProvider[];
   customContext?: string;
   sources: Source[];
+  selectedBlueprints?: SelectedBlueprint[];
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  details: string;
+  testStrategy: string;
+  priority: 'high' | 'medium' | 'low';
+  files_involved: string[];
+  dependencies: string[];
 }
 
 export interface OptimizationResult {
-  optimizedPrompt: string;
+  coldStartGuide: string;
+  directoryStructure: string;
+  implementationPlan: TaskItem[];
   architectureNotes: string;
-  suggestedStack: string;
+  fullMarkdownSpec: string;
 }

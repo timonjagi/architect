@@ -4,112 +4,86 @@ import { PromptConfig, OptimizationResult, Source } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Merges a generic blueprint prompt with the specific context of uploaded documents.
- */
-export const contextualizeBlueprint = async (
-  blueprintName: string,
-  basePrompt: string,
-  sources: Source[]
-): Promise<string> => {
-  if (sources.length === 0) return basePrompt;
-
-  const sourcesSummary = sources.map(s => `[${s.name}]: ${s.content.substring(0, 1000)}...`).join('\n');
-
-  const systemInstruction = `
-    You are a technical requirement specialist. 
-    Your task is to take a generic "Blueprint" for a web feature and REWRITE it to be specific to the project's context provided in the source documents.
-    
-    Rules:
-    - Keep the core technical structure of the blueprint.
-    - Inject specific business terminology, naming conventions, and constraints found in the sources.
-    - If the source mentions a specific user flow (e.g., "The customer must verify their VAT number"), ensure that is integrated.
-    - Output ONLY the rewritten prompt text. No preamble.
-  `;
-
-  const userPrompt = `
-    Blueprint Name: ${blueprintName}
-    Base Template: ${basePrompt}
-    
-    Source Documents Context:
-    ${sourcesSummary}
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: userPrompt,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      }
-    });
-
-    return response.text || basePrompt;
-  } catch (error) {
-    console.error("Contextualization failed:", error);
-    return basePrompt; // Fallback to static
-  }
-};
-
 export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
 ): Promise<OptimizationResult> => {
   const sourcesContext = config.sources.length > 0 
-    ? `
-    The following PROJECT DOCUMENTS have been provided as primary context. 
-    Strictly adhere to the business logic, style guides, and constraints defined within them:
-    ${config.sources.map(s => `--- DOCUMENT: ${s.name} ---\n${s.content}\n--- END DOCUMENT ---`).join('\n\n')}
-    `
+    ? `PROJECT DOCUMENTS PROVIDED:\n${config.sources.map(s => `--- ${s.name} ---\n${s.content}`).join('\n\n')}`
     : '';
 
+  const blueprintContext = config.selectedBlueprints?.length 
+    ? `SELECTED ARCHITECTURAL MODULES (PRIMARY CONTEXT):\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.selectedSubLabels.join(', ')}`).join('\n')}`
+    : 'No specific blueprints selected. Build according to general best practices for the chosen stack.';
+
   const systemInstruction = `
-    You are a world-class Senior Software Architect and Prompt Engineer specializing in modern web development.
-    Your goal is to take a "raw" user requirement and transform it into a highly detailed, professional-grade technical prompt that can be used to generate production-quality code from an AI.
+    You are a Principal Software Architect. Your goal is to generate a "Speckit" - a high-fidelity implementation plan that allows a coding agent to build a feature from a COLD START.
+
+    YOUR OUTPUT MUST FOLLOW THE DEPTH OF A MASTER BACKLOG:
+    1. Break the feature into logical, atomic Tasks.
+    2. Each Task must have:
+       - 'details': Exact implementation logic, edge cases to handle, and API patterns.
+       - 'testStrategy': Step-by-step verification (e.g., "Check Supabase RLS by trying to access ID 123 from User B").
+       - 'priority': high/medium/low.
+       - 'files_involved': Specific paths.
+
+    CORE ARCHITECTURE SELECTION:
+    ${blueprintContext}
 
     ${sourcesContext}
 
-    Technical Strategy Constraints:
-    - Clean architecture and SOLID principles.
-    - Modern frameworks: ${config.framework}.
-    - Styling: ${config.styling}.
-    - Backend/Self-hostable services: ${config.backend}.
-    - Tooling: ${config.tooling.join(', ')}.
-    - Messaging Infrastructure: ${config.providers.length > 0 ? config.providers.join(', ') : 'None specified'}.
-    
-    Implementation Focus for Messaging:
-    - If Novu is selected, focus on workflow-based notifications and in-app feeds.
-    - If Twilio is selected, ensure robust SMS handling and rate-limiting.
-    - If OneSignal is selected, focus on service worker registration and push token management.
-    - If Resend is selected, focus on high-fidelity transactional emails with React Email templates.
+    TECH STACK (MANDATORY):
+    - Framework: ${config.framework}
+    - Styling: ${config.styling}
+    - Backend: ${config.backend}
+    - Tooling: ${config.tooling.join(', ')}
+    - Notifications: ${config.providers.join(', ')}
 
-    The output MUST be a JSON object with three keys:
-    1. "optimizedPrompt": The full, detailed prompt for the AI.
-    2. "architectureNotes": Brief technical decisions made.
-    3. "suggestedStack": A summary list of the technologies included.
-  `;
+    INSTRUCTIONS:
+    - Prioritize the 'SELECTED ARCHITECTURAL MODULES' when designing the system.
+    - If user provides 'Additional Requirements', integrate them into the architectural plan.
+    - Focus on self-hostable, modern patterns (e.g., Row Level Security in DB, Server Actions in Next.js).
 
-  const userContent = `
-    Requirement: "${rawPrompt}"
-    Additional User Context: ${config.customContext || 'None'}
+    OUTPUT JSON STRUCTURE:
+    - coldStartGuide: Markdown for initial environment setup, essential library installs, and core boilerplate files.
+    - directoryStructure: Text-based tree representing the file organization.
+    - implementationPlan: Array of TaskItem objects representing the step-by-step build phases.
+    - architectureNotes: Critical system boundaries, performance constraints, and state management strategy.
+    - fullMarkdownSpec: Complete spec as one string formatted for easy reading.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: userContent,
+      model: "gemini-3-pro-preview",
+      contents: `Additional User Instructions: "${rawPrompt || 'Build according to selected blueprints and tech stack.'}"`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            optimizedPrompt: { type: Type.STRING },
+            coldStartGuide: { type: Type.STRING },
+            directoryStructure: { type: Type.STRING },
+            implementationPlan: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  title: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  details: { type: Type.STRING },
+                  testStrategy: { type: Type.STRING },
+                  priority: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
+                  files_involved: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
+                }
+              }
+            },
             architectureNotes: { type: Type.STRING },
-            suggestedStack: { type: Type.STRING }
+            fullMarkdownSpec: { type: Type.STRING }
           },
-          required: ["optimizedPrompt", "architectureNotes", "suggestedStack"]
+          required: ["coldStartGuide", "directoryStructure", "implementationPlan", "architectureNotes", "fullMarkdownSpec"]
         }
       }
     });
@@ -117,6 +91,6 @@ export const optimizePrompt = async (
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Optimization failed:", error);
-    throw new Error("Failed to optimize prompt. Please try again.");
+    throw new Error("Failed to generate Speckit.");
   }
 };
