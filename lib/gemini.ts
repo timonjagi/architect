@@ -2,12 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
 ): Promise<OptimizationResult> => {
+  // Initialize inside the function to avoid top-level process.env reference crash
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const sourcesContext = config.sources.length > 0 
     ? `PROJECT DOCUMENTS PROVIDED:\n${config.sources.map(s => `--- ${s.name} ---\n${s.content}`).join('\n\n')}`
     : '';

@@ -183,20 +183,40 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
           <div className="xl:col-span-5 space-y-8">
             <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-              <div className="flex flex-col gap-5 mb-6">
+              <div className="flex flex-col gap-4 mb-6">
                 <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500">
                   <Terminal className="w-4 h-4" /> 1. Functional Modules
                 </h2>
                 
                 <div className="flex items-center gap-2">
                   <button onClick={() => setIsFilterModalOpen(true)} className={`h-11 px-4 rounded-md border flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${activeCategory !== 'all' ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}>
-                    <Filter className="w-3.5 h-3.5" /> Filter {activeCategory !== 'all' && `(${activeCategoryLabel})`}
+                    <Filter className="w-3.5 h-3.5" /> Filter
                   </button>
                   <div className="flex-1 flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-md px-4 h-11 focus-within:border-slate-500 transition-all">
                     <Search className="w-4 h-4 text-slate-500" />
                     <input type="text" placeholder="Search modules..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none focus:ring-0 text-xs w-full outline-none placeholder:text-slate-600" />
                   </div>
                 </div>
+
+                {/* Active Filter Chips Moved Below Search */}
+                {(activeCategory !== 'all' || activeBlueprints.length > 0) && (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 duration-300 border-t border-slate-900 pt-3">
+                    {activeCategory !== 'all' && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/30 rounded-md text-[9px] font-black text-indigo-400 group uppercase tracking-widest shadow-sm">
+                        {activeCategoryLabel}
+                        <button onClick={() => setActiveCategory('all')} className="text-indigo-400/60 hover:text-indigo-400 transition-colors ml-1">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {activeBlueprints.map(ab => (
+                      <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
+                        {ab.name}
+                        <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="min-h-[220px] flex flex-col justify-between">
@@ -225,42 +245,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </div>
                 )}
               </div>
-
-              {(activeCategory !== 'all' || activeBlueprints.length > 0) && (
-                <div className="mt-8 pt-6 border-t border-slate-800 space-y-6">
-                  {activeCategory !== 'all' && (
-                    <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Filter className="w-3.5 h-3.5" /> Active Filter
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        <div className="flex items-center gap-2 px-3 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-md text-[9px] font-black text-indigo-400 group uppercase tracking-widest shadow-sm">
-                          Category: {activeCategoryLabel}
-                          <button onClick={() => setActiveCategory('all')} className="text-indigo-400/60 hover:text-indigo-400 transition-colors ml-1">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeBlueprints.length > 0 && (
-                    <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-                      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Boxes className="w-3.5 h-3.5" /> Selected Modules
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {activeBlueprints.map(ab => (
-                          <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
-                            {ab.name}
-                            <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </section>
 
             <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm">
