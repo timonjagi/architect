@@ -24,12 +24,8 @@ interface Blueprint {
   subcategories: { id: string; label: string; description: string }[];
 }
 
-const LayersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.27a2 2 0 0 0 0 3.46l8.57 4.09a2 2 0 0 0 1.66 0l8.57-4.09a2 2 0 0 0 0-3.46z"/><path d="m2.6 14.27 8.57 4.09a2 2 0 0 0 1.66 0l8.57-4.09"/><path d="m2.6 10.27 8.57 4.09a2 2 0 0 0 1.66 0l8.57-4.09"/></svg>
-);
-
 const CATEGORIES = [
-  { id: 'all', label: 'All Modules', icon: <LayersIcon className="w-4 h-4" /> },
+  { id: 'all', label: 'All Modules', icon: <Layers className="w-4 h-4" /> },
   { id: 'saas', label: 'SaaS Core', icon: <Briefcase className="w-4 h-4" /> },
   { id: 'ecommerce', label: 'E-commerce', icon: <ShoppingBag className="w-4 h-4" /> },
   { id: 'ai', label: 'AI & Data', icon: <Bot className="w-4 h-4" /> },
@@ -212,32 +208,32 @@ const TaskCard: React.FC<{ task: TaskItem }> = ({ task }) => {
   };
 
   return (
-    <div className={`p-4 md:p-5 bg-slate-950 border transition-all rounded-[1.5rem] md:rounded-[2rem] group ${isOpen ? 'border-indigo-500/50 shadow-xl shadow-indigo-500/5' : 'border-slate-800 hover:border-slate-700'}`}>
+    <div className={`p-4 md:p-5 bg-slate-900/40 border transition-all rounded-lg group ${isOpen ? 'border-slate-500 shadow-md' : 'border-slate-800 hover:border-slate-700'}`}>
       <div className="flex items-start gap-3 md:gap-4 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-        <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-[10px] flex items-center justify-center font-black text-slate-500 group-hover:text-indigo-400 transition-colors shrink-0">{task.id}</div>
+        <div className="w-8 h-8 rounded-md bg-slate-950 border border-slate-800 text-[10px] flex items-center justify-center font-black text-slate-500 group-hover:text-white transition-colors shrink-0">{task.id}</div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-1">
             <h5 className="font-bold text-slate-100 text-sm truncate">{task.title}</h5>
-            <span className={`w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border ${priorityColor[task.priority]}`}>{task.priority}</span>
+            <span className={`w-fit px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter border ${priorityColor[task.priority]}`}>{task.priority}</span>
           </div>
           <p className="text-xs text-slate-400 line-clamp-1">{task.description}</p>
         </div>
         <button className="p-2 text-slate-500 group-hover:text-white transition-colors">{isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
       </div>
       {isOpen && (
-        <div className="mt-4 pt-4 border-t border-slate-900 space-y-5 md:space-y-6 animate-in slide-in-from-top-2 duration-300">
+        <div className="mt-4 pt-4 border-t border-slate-800 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <div>
-            <h6 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2"><Info className="w-3 h-3" /> Implementation Logic</h6>
-            <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/50 p-3 md:p-4 rounded-xl md:rounded-2xl">{task.details}</p>
+            <h6 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2"><Info className="w-3 h-3" /> Implementation Details</h6>
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-md border border-slate-800/50">{task.details}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h6 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2"><BadgeCheck className="w-3 h-3" /> Test Strategy</h6>
+              <h6 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><BadgeCheck className="w-3 h-3" /> QA Strategy</h6>
               <p className="text-[11px] text-slate-400 leading-relaxed italic">{task.testStrategy}</p>
             </div>
             <div>
-              <h6 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2"><FolderTree className="w-3 h-3" /> Impacted Files</h6>
-              <div className="flex flex-wrap gap-1.5">{task.files_involved.map(f => (<span key={f} className="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] font-mono text-slate-500">{f}</span>))}</div>
+              <h6 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><FolderTree className="w-3 h-3" /> Affected Files</h6>
+              <div className="flex flex-wrap gap-1.5">{task.files_involved.map(f => (<span key={f} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[9px] font-mono text-slate-500">{f}</span>))}</div>
             </div>
           </div>
         </div>
@@ -261,6 +257,7 @@ const App: React.FC = () => {
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isStackModalOpen, setIsStackModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [config, setConfig] = useState<Omit<PromptConfig, 'sources'>>({
@@ -325,24 +322,26 @@ const App: React.FC = () => {
 
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 md:p-6 relative overflow-x-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] md:w-[1000px] h-[300px] md:h-[600px] bg-indigo-600/10 blur-[60px] md:blur-[120px] rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-purple-600/5 blur-[50px] md:blur-[100px] rounded-full" />
-        <header className="absolute top-0 w-full p-4 md:p-8 flex justify-between items-center max-w-7xl">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="bg-indigo-600 p-1.5 md:p-2 rounded-lg md:rounded-xl shadow-lg shadow-indigo-600/20"><Code2 className="w-5 h-5 md:w-6 md:h-6 text-white" /></div>
-            <span className="font-bold text-lg md:text-xl tracking-tight">DevPrompt</span>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <header className="absolute top-0 w-full p-8 flex justify-between items-center max-w-7xl">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-1.5 rounded-md">
+              <Code2 className="w-5 h-5 text-slate-950" />
+            </div>
+            <span className="font-bold text-lg tracking-tight text-white uppercase">DevPrompt</span>
           </div>
-          <button onClick={() => setView('app')} className="px-4 md:px-6 py-2 md:py-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-white text-xs md:text-sm font-bold transition-all border border-slate-700 shadow-xl">Sign In</button>
+          <button onClick={() => setView('app')} className="px-6 py-2 rounded-md bg-white hover:bg-slate-200 text-slate-950 text-sm font-bold transition-all">Initialize</button>
         </header>
-        <div className="max-w-4xl w-full text-center space-y-8 md:space-y-12 relative z-10 pt-16 md:pt-0">
-          <div className="space-y-4 md:space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] md:text-xs font-black uppercase tracking-[0.2em]"><PlayCircle className="w-3.5 h-3.5 md:w-4 md:h-4" /> Professional Grade</div>
-            <h1 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-[1.1]">Architect Your <span className="text-indigo-500">App</span> From Zero.</h1>
-            <p className="text-slate-400 text-base md:text-xl max-w-2xl mx-auto leading-relaxed px-4 md:px-0">Select high-fidelity functional modules and define your stack to generate master-level technical specs for any modern project.</p>
+        <div className="max-w-4xl w-full text-center space-y-12 relative z-10">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-800 text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-slate-900/50">
+              <BadgeCheck className="w-4 h-4 text-white" /> Production Ready
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none">Architect Your <span className="text-slate-500">Infrastructure</span> in Minutes.</h1>
+            <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">Combine high-fidelity modules with modern tech stacks to generate master-level implementation specifications.</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-6 md:px-0">
-            <button onClick={() => setView('app')} className="group w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 rounded-[1.5rem] md:rounded-[2rem] bg-indigo-600 text-white font-black text-xs md:text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-600/40 flex items-center justify-center gap-3 active:scale-95">Enter Designer <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" /></button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button onClick={() => setView('app')} className="group w-full sm:w-auto px-12 py-5 rounded-md bg-white text-slate-950 font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-4 active:scale-95 shadow-2xl">Start Designing <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></button>
           </div>
         </div>
       </div>
@@ -350,66 +349,75 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-white/20">
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 bg-slate-950/50 backdrop-blur-sm shrink-0">
-          <div className="flex items-center gap-3 md:gap-4">
-            <button onClick={() => setView('landing')} className="flex items-center gap-2 text-slate-100 hover:text-indigo-400 transition-colors">
-              <div className="bg-indigo-600 p-1.5 rounded-lg"><Code2 className="w-5 h-5 text-white" /></div>
-              <span className="text-sm font-bold tracking-tight">DevPrompt</span>
+        <header className="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-950 shrink-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setView('landing')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="bg-white p-1 rounded-md">
+                <Code2 className="w-4 h-4 text-slate-950" />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-white uppercase">DevPrompt</span>
             </button>
             <div className="h-4 w-px bg-slate-800 mx-2 hidden md:block" />
-            <div className="text-xs font-black text-slate-500 uppercase tracking-widest hidden md:block">Architect Dashboard</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">Architect Dashboard</div>
           </div>
-          <div className="flex items-center gap-3 md:gap-4">
-             <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-600/20" />
+          <div className="flex items-center gap-4">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Status: Connected</div>
+            <div className="w-8 h-8 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center"><UserCheck className="w-4 h-4 text-white" /></div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 custom-scrollbar">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
-            <div className="xl:col-span-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar max-w-[1600px] mx-auto w-full">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            <div className="xl:col-span-5 space-y-8">
               {/* Section 1: Modules */}
-              <section className="bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-xl flex flex-col">
-                <div className="flex flex-col gap-4 mb-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-base md:text-lg font-bold flex items-center gap-2"><Terminal className="text-indigo-400 w-4 h-4 md:w-5 md:h-5" /> 1. Functional Modules</h2>
-                  </div>
+              <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                <div className="flex flex-col gap-5 mb-6">
+                  <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500">
+                    <Terminal className="w-4 h-4" /> 1. Functional Modules
+                  </h2>
                   
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2.5 focus-within:border-indigo-500/50 transition-all">
-                      <Search className="w-4 h-4 text-slate-500" />
-                      <input type="text" placeholder="Search features..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none focus:ring-0 text-xs w-full outline-none" />
-                    </div>
                     <button 
                       onClick={() => setIsFilterModalOpen(true)}
-                      className={`p-2.5 rounded-xl border transition-all ${activeCategory !== 'all' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:text-white hover:border-slate-700'}`}
+                      className={`h-11 px-4 rounded-md border flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${activeCategory !== 'all' ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
                     >
-                      <Filter className="w-5 h-5" />
+                      <Filter className="w-3.5 h-3.5" />
+                      Filter
                     </button>
+                    <div className="flex-1 flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-md px-4 h-11 focus-within:border-slate-500 transition-all">
+                      <Search className="w-4 h-4 text-slate-500" />
+                      <input type="text" placeholder="Search modules..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none focus:ring-0 text-xs w-full outline-none placeholder:text-slate-600" />
+                    </div>
                   </div>
 
-                  {/* Top: Only Active Category Filter Chips */}
                   {activeCategory !== 'all' && (
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-900">
-                      <div className="flex items-center gap-2 px-3 py-1 bg-indigo-600/10 border border-indigo-500/30 rounded-full text-[10px] font-bold text-indigo-400">
-                        Filter: {CATEGORIES.find(c => c.id === activeCategory)?.label}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-md text-[9px] font-black text-white uppercase tracking-widest">
+                        {CATEGORIES.find(c => c.id === activeCategory)?.label}
                         <button onClick={() => setActiveCategory('all')} className="hover:text-red-400 transition-colors"><X className="w-3 h-3" /></button>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="min-h-[260px] flex flex-col justify-between">
+                <div className="min-h-[220px] flex flex-col justify-between">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                     {currentBlueprints.map(bp => {
                       const isActive = activeBlueprints.some(ab => ab.blueprintId === bp.id);
                       return (
-                        <button key={bp.id} onClick={() => setSelectedBlueprintForModal(bp)} className={`p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all text-left group h-fit ${isActive ? 'bg-indigo-600/10 border-indigo-500 ring-1 ring-indigo-500/30' : 'border-slate-800 bg-slate-950/50 hover:bg-slate-800'}`}>
-                          <div className={`p-2 rounded-lg md:rounded-xl mb-2 md:mb-3 transition-colors w-fit shrink-0 ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 group-hover:bg-slate-700'}`}>{bp.icon}</div>
+                        <button key={bp.id} onClick={() => {
+                          setSelectedBlueprintForModal(bp);
+                          // Reset selection for new blueprint modal open
+                          setSelectedSubs(activeBlueprints.find(ab => ab.blueprintId === bp.id)?.selectedSubLabels.map(l => 
+                            bp.subcategories.find(s => s.label === l)?.id || ''
+                          ).filter(id => id !== '') || []);
+                        }} className={`p-4 rounded-lg border transition-all text-left group flex flex-col gap-3 ${isActive ? 'bg-white border-white' : 'border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700'}`}>
+                          <div className={`p-2 rounded-md transition-colors w-fit ${isActive ? 'bg-slate-950 text-white' : 'bg-slate-800 group-hover:bg-slate-700'}`}>{bp.icon}</div>
                           <div className="min-w-0">
-                            <span className="text-xs font-bold block mb-1 truncate">{bp.name}</span>
-                            <span className="text-[8px] md:text-[9px] text-slate-500 uppercase font-mono tracking-widest">{bp.badge}</span>
+                            <span className={`text-xs font-bold block truncate ${isActive ? 'text-slate-950' : 'text-slate-100'}`}>{bp.name}</span>
+                            <span className={`text-[8px] uppercase font-black tracking-widest ${isActive ? 'text-slate-500' : 'text-slate-500'}`}>{bp.badge}</span>
                           </div>
                         </button>
                       );
@@ -417,26 +425,25 @@ const App: React.FC = () => {
                   </div>
 
                   {totalPages > 1 && (
-                    <div className="mt-6 pt-4 border-t border-slate-900 flex items-center justify-between shrink-0">
-                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg transition-all"><ChevronLeft className="w-4 h-4" /></button>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
-                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg transition-all"><ChevronRight className="w-4 h-4" /></button>
+                    <div className="mt-6 pt-4 border-t border-slate-900 flex items-center justify-between">
+                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 disabled:opacity-30 rounded-md transition-all"><ChevronLeft className="w-4 h-4" /></button>
+                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 disabled:opacity-30 rounded-md transition-all"><ChevronRight className="w-4 h-4" /></button>
                     </div>
                   )}
                 </div>
 
-                {/* Bottom: Selected Modules Section */}
                 {activeBlueprints.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-slate-800">
-                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Boxes className="w-3 h-3 text-indigo-400" /> Selected Context Modules
+                  <div className="mt-8 pt-6 border-t border-slate-800">
+                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Boxes className="w-3.5 h-3.5" /> Selected Context
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {activeBlueprints.map(ab => (
-                        <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-[10px] font-bold text-slate-200 group hover:border-indigo-500/50 transition-all">
-                          <span className="text-indigo-400">{ab.name}</span>
-                          <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-red-400 transition-colors">
-                            <X className="w-3 h-3" />
+                        <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group hover:border-slate-600 transition-all uppercase tracking-widest">
+                          {ab.name}
+                          <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors">
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
@@ -445,133 +452,122 @@ const App: React.FC = () => {
                 )}
               </section>
 
-              {/* Section 2: Tech Stack Selection */}
-              <section className="bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-xl">
-                <h2 className="text-base md:text-lg font-bold flex items-center gap-2 mb-6"><Settings2 className="text-indigo-400 w-4 h-4 md:w-5 md:h-5" /> 2. Tech Stack</h2>
-                <div className="space-y-6">
-                  {[ 
-                    { label: 'Framework', options: FRAMEWORKS, key: 'framework' }, 
-                    { label: 'Backend Infra', options: BACKENDS, key: 'backend' }, 
-                    { label: 'Styling', options: STYLING, key: 'styling' } 
-                  ].map(group => (
-                    <div key={group.label}>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-3">{group.label}</label>
-                      <div className="flex flex-wrap gap-2">
-                        {group.options.map(opt => (
-                          <button
-                            key={opt}
-                            onClick={() => setConfig({...config, [group.key]: opt as any})}
-                            className={`px-3 py-1.5 rounded-lg border text-[10px] md:text-xs font-bold transition-all ${config[group.key as keyof typeof config] === opt ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+              {/* Section 2: Tech Stack */}
+              <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500">
+                    <Settings2 className="w-4 h-4" /> 2. Tech Stack
+                  </h2>
+                  <button onClick={() => setIsStackModalOpen(true)} className="p-1.5 bg-slate-900 border border-slate-800 text-white rounded-md hover:bg-slate-800 transition-all">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[10px] font-bold text-slate-100 uppercase tracking-tight">
+                    <span className="text-slate-500 font-black mr-1">FRAMEWORK:</span> {config.framework}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[10px] font-bold text-slate-100 uppercase tracking-tight">
+                    <span className="text-slate-500 font-black mr-1">BACKEND:</span> {config.backend}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[10px] font-bold text-slate-100 uppercase tracking-tight">
+                    <span className="text-slate-500 font-black mr-1">UI:</span> {config.styling}
+                  </div>
                 </div>
               </section>
 
               {/* Section 3: Project Context */}
-              <section className="bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-xl">
+              <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm">
                  <div className="flex items-center justify-between mb-4">
-                   <h2 className="text-base md:text-lg font-bold flex items-center gap-2"><BookOpen className="text-emerald-400 w-4 h-4 md:w-5 md:h-5" /> 3. Project Context</h2>
-                   <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-indigo-600/10 text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"><Plus className="w-4 h-4" /></button>
+                   <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500"><BookOpen className="w-4 h-4" /> 3. Contextual Data</h2>
+                   <button onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-slate-900 border border-slate-800 text-white rounded-md hover:bg-slate-800 transition-all"><Plus className="w-4 h-4" /></button>
                    <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
                  </div>
                  <div className="space-y-2">
                    {sources.length === 0 ? (
-                     <div className="p-6 md:p-8 border-2 border-dashed border-slate-800 rounded-xl md:rounded-2xl text-center text-slate-600">
-                        <FileText className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 opacity-20" />
-                        <p className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest">Optional PRDs or Schemas</p>
+                     <div className="py-8 border-2 border-dashed border-slate-900 rounded-xl text-center text-slate-600">
+                        <FileText className="w-6 h-6 mx-auto mb-2 opacity-10" />
+                        <p className="text-[9px] font-black uppercase tracking-widest">Attach PRDs or Schemas</p>
                      </div>
                    ) : sources.map(s => (
-                     <div key={s.id} className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl group hover:border-indigo-500/30">
-                       <div className="flex items-center gap-3 min-w-0"><FileText className="w-4 h-4 text-slate-500 shrink-0" /><span className="text-[10px] md:text-xs font-medium truncate">{s.name}</span></div>
-                       <button onClick={() => setSources(prev => prev.filter(x => x.id !== s.id))} className="text-slate-500 hover:text-red-400 transition-all p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                     <div key={s.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-md group hover:border-slate-600">
+                       <div className="flex items-center gap-3 min-w-0"><FileText className="w-4 h-4 text-slate-500 shrink-0" /><span className="text-[10px] font-bold truncate text-slate-200 uppercase tracking-tight">{s.name}</span></div>
+                       <button onClick={() => setSources(prev => prev.filter(x => x.id !== s.id))} className="text-slate-500 hover:text-red-400 transition-all p-1"><Trash2 className="w-4 h-4" /></button>
                      </div>
                    ))}
                  </div>
               </section>
 
               {/* Section 4: Manual Instructions */}
-              <section className="bg-slate-900/50 border border-slate-800 rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-xl relative">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base md:text-lg font-bold flex items-center gap-2"><Sparkles className="text-amber-400 w-4 h-4 md:w-5 md:h-5" /> 4. Requirements</h2>
-                </div>
+              <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm relative">
+                <h2 className="text-xs font-bold flex items-center gap-2 mb-4 uppercase tracking-widest text-slate-500"><Sparkles className="w-4 h-4" /> 4. Custom Logic</h2>
                 <textarea 
                   value={rawPrompt} 
                   onChange={(e) => setRawPrompt(e.target.value)} 
-                  placeholder="Describe any additional business logic, user stories, or edge cases..." 
-                  className="w-full h-28 md:h-32 bg-slate-950 border border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-xs md:text-sm leading-relaxed mb-6 focus:ring-1 focus:ring-indigo-500 transition-all outline-none resize-none" 
+                  placeholder="Define user stories, business rules, or specific edge cases..." 
+                  className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700" 
                 />
-                <button onClick={handleOptimize} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim())} className="w-full py-3.5 md:py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white font-black text-[10px] md:text-xs uppercase tracking-widest rounded-xl md:rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-600/20 active:scale-95">
-                  {loading ? <><RefreshCcw className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> Generating Speckit...</> : <><Zap className="w-4 h-4 md:w-5 md:h-5" /> Synthesize Architecture</>}
+                <button onClick={handleOptimize} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim())} className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl">
+                  {loading ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting Spec...</> : <><Zap className="w-4 h-4" /> Generate Speckit</>}
                 </button>
               </section>
             </div>
 
             <div className="xl:col-span-7 min-h-[400px] flex flex-col">
               {!result && !loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 md:p-12 border-2 border-dashed border-slate-800 rounded-[1.5rem] md:rounded-[3rem] bg-slate-900/10">
-                  <PlayCircle className="w-12 h-12 md:w-16 md:h-16 text-slate-800 mb-4 md:mb-6" />
-                  <h3 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-tighter">Design Board Ready</h3>
-                  <p className="text-slate-500 max-w-sm mx-auto text-xs md:text-base leading-relaxed">Synthesize selected modules and stack into a master coding specification.</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-900 rounded-xl bg-slate-950/40">
+                  <PlayCircle className="w-16 h-16 text-slate-900 mb-6" />
+                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Plan Board</h3>
+                  <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Combine modules and project context to build a master-grade coding plan.</p>
                 </div>
               ) : loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-4 md:space-y-6 animate-pulse">
-                  <div className="relative">
-                     <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-ping"></div>
-                     <RefreshCcw className="w-10 h-10 md:w-12 md:h-12 text-indigo-500 animate-spin relative" />
-                  </div>
-                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-600">Architecting Solutions</span>
+                <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                   <div className="w-12 h-12 bg-white rounded-lg animate-pulse flex items-center justify-center">
+                    <RefreshCcw className="w-6 h-6 text-slate-950 animate-spin" />
+                   </div>
+                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-600">Generating Strategy</span>
                 </div>
               ) : (
-                <div className="flex flex-col flex-1 space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                  <div className="bg-slate-900/50 border border-slate-800 rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex-1 flex flex-col min-h-0">
-                    <div className="px-4 md:px-8 py-3 md:py-4 bg-slate-800/40 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-                      <div className="flex gap-1 md:gap-2">
+                <div className="flex flex-col flex-1 space-y-6 animate-in fade-in duration-300">
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col min-h-0">
+                    <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 shrink-0">
+                      <div className="flex gap-2">
                         {[
-                          { id: 'tasks', label: 'Backlog', icon: <ListTodo className="w-3 h-3 md:w-3.5 md:h-3.5" /> },
-                          { id: 'architecture', label: 'Architecture', icon: <ShieldCheck className="w-3 h-3 md:w-3.5 md:h-3.5" /> },
-                          { id: 'files', label: 'FS Tree', icon: <FolderTree className="w-3 h-3 md:w-3.5 md:h-3.5" /> }
+                          { id: 'tasks', label: 'Roadmap', icon: <ListTodo className="w-3.5 h-3.5" /> },
+                          { id: 'architecture', label: 'Arch', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+                          { id: 'files', label: 'FS Tree', icon: <FolderTree className="w-3.5 h-3.5" /> }
                         ].map(tab => (
-                          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>{tab.icon}{tab.label}</button>
+                          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-white'}`}>{tab.icon}{tab.label}</button>
                         ))}
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(result?.fullMarkdownSpec || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl bg-slate-800 text-white hover:bg-slate-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">{copied ? <Check className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <ClipboardList className="w-3 h-3 md:w-3.5 md:h-3.5" />}{copied ? 'Copied' : 'Copy Spec'}</button>
+                      <button onClick={() => { navigator.clipboard.writeText(result?.fullMarkdownSpec || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="flex items-center gap-2 px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">{copied ? <Check className="w-3.5 h-3.5" /> : <ClipboardList className="w-3.5 h-3.5" />}{copied ? 'Copied' : 'Copy Spec'}</button>
                     </div>
-                    <div className="p-4 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="p-6 md:p-10 flex-1 overflow-y-auto custom-scrollbar">
                       {activeTab === 'tasks' && (
-                        <div className="space-y-6">
-                           <div className="p-4 md:p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl md:rounded-3xl mb-4 md:mb-8 flex items-start gap-3 md:gap-4">
-                             <div className="p-2 md:p-3 bg-indigo-600 rounded-lg md:rounded-2xl text-white shadow-lg shadow-indigo-600/20 shrink-0"><PlayCircle className="w-5 h-5 md:w-6 md:h-6" /></div>
+                        <div className="space-y-8">
+                           <div className="p-6 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-5">
+                             <div className="p-3 bg-white rounded-md text-slate-950 shrink-0"><PlayCircle className="w-5 h-5" /></div>
                              <div className="flex-1 min-w-0">
-                               <h4 className="text-[9px] md:text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1 md:mb-2">Implementation Summary</h4>
-                               <div className="text-[11px] md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{result?.coldStartGuide}</div>
+                               <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Kickoff Strategy</h4>
+                               <div className="text-xs md:text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">{result?.coldStartGuide}</div>
                              </div>
                            </div>
                            <div className="flex items-center justify-between mb-2 px-1">
-                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><ClipboardList className="w-3.5 h-3.5" /> Execution Plan</h4>
-                             <span className="text-[9px] md:text-[10px] font-bold text-slate-600 tracking-wider">{result?.implementationPlan.length} ATOMIC TASKS</span>
+                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Implementation Phases</h4>
+                             <span className="text-[10px] font-bold text-slate-700 tracking-wider">{result?.implementationPlan.length} MODULES</span>
                            </div>
-                           <div className="space-y-3 md:space-y-4">{result?.implementationPlan.map((task) => (<TaskCard key={task.id} task={task} />))}</div>
+                           <div className="space-y-4">{result?.implementationPlan.map((task) => (<TaskCard key={task.id} task={task} />))}</div>
                         </div>
                       )}
                       {activeTab === 'architecture' && (
-                        <div className="space-y-6">
-                           <div className="p-5 md:p-8 bg-slate-950 border border-slate-800 rounded-2xl md:rounded-[2.5rem] relative overflow-hidden">
-                              <div className="absolute top-0 right-0 p-4 md:p-8 opacity-[0.03]"><ShieldCheck className="w-24 h-24 md:w-32 md:h-32" /></div>
-                              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 md:mb-6 flex items-center gap-2 relative z-10"><Info className="w-4 h-4" /> Architectural Guards</h4>
-                              <div className="text-[11px] md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap italic font-medium relative z-10">{result?.architectureNotes}</div>
-                           </div>
+                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg relative overflow-hidden">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-white" /> Architectural Constraints</h4>
+                          <div className="text-xs md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-medium">{result?.architectureNotes}</div>
                         </div>
                       )}
                       {activeTab === 'files' && (
-                        <div className="p-5 md:p-8 bg-slate-950 border border-slate-800 rounded-2xl md:rounded-[2.5rem] font-mono relative overflow-hidden">
-                           <div className="absolute top-0 right-0 p-4 md:p-8 opacity-[0.03]"><FolderTree className="w-24 h-24 md:w-32 md:h-32" /></div>
-                           <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 md:mb-6 flex items-center gap-2 relative z-10"><FolderTree className="w-4 h-4" /> Directory Map</h4>
-                           <pre className="text-[10px] md:text-xs text-indigo-300 leading-relaxed overflow-x-auto relative z-10 scrollbar-thin">{result?.directoryStructure}</pre>
+                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg font-mono relative overflow-hidden">
+                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><FolderTree className="w-4 h-4" /> Final Output Map</h4>
+                           <pre className="text-[10px] md:text-xs text-slate-200 leading-relaxed overflow-x-auto scrollbar-thin">{result?.directoryStructure}</pre>
                         </div>
                       )}
                     </div>
@@ -583,35 +579,68 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      {/* Stack Selection Modal */}
+      {isStackModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-8 py-8 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-slate-900 p-2 rounded-md border border-slate-800"><Settings2 className="w-4 h-4 text-white" /></div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Stack Config</h3>
+              </div>
+              <button onClick={() => setIsStackModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-8 space-y-8 bg-slate-950">
+              {[ 
+                { label: 'Framework', options: FRAMEWORKS, key: 'framework' }, 
+                { label: 'Infrastructure / DB', options: BACKENDS, key: 'backend' }, 
+                { label: 'Styling & Components', options: STYLING, key: 'styling' } 
+              ].map(group => (
+                <div key={group.label}>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-4">{group.label}</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {group.options.map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => setConfig({...config, [group.key]: opt as any})}
+                        className={`px-3 py-2.5 rounded-md border text-[10px] font-bold transition-all text-center ${config[group.key as keyof typeof config] === opt ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-8 border-t border-slate-800 flex justify-end">
+              <button onClick={() => setIsStackModalOpen(false)} className="px-8 py-3 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 shadow-md active:scale-95 transition-all">Confirm Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filter Categories Modal */}
       {isFilterModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsFilterModalOpen(false)} />
-          <div className="relative bg-slate-900 border border-white/5 rounded-[2rem] md:rounded-[3rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="px-6 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-950">
               <div className="flex items-center gap-4">
-                <div className="bg-indigo-600/20 p-2.5 rounded-xl text-indigo-400 shrink-0"><Filter className="w-5 h-5" /></div>
-                <div><h3 className="text-lg font-black text-white">Filter Categories</h3><p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-0.5">Application Domains</p></div>
+                <div className="bg-slate-900 p-2 rounded-md border border-slate-800"><Filter className="w-4 h-4 text-white" /></div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Select Category</h3>
               </div>
-              <button onClick={() => setIsFilterModalOpen(false)} className="p-2 text-slate-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+              <button onClick={() => setIsFilterModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
             </div>
-            
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-900/20 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-950">
               {CATEGORIES.map(cat => (
                 <button 
                   key={cat.id} 
                   onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }} 
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-bold border transition-all ${activeCategory === cat.id ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-xl' : 'bg-slate-950/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700 text-slate-400'}`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-md text-[10px] font-black uppercase tracking-widest border transition-all ${activeCategory === cat.id ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 hover:text-white text-slate-400'}`}
                 >
-                  <span className={`${activeCategory === cat.id ? 'text-indigo-400' : 'text-slate-600'}`}>{cat.icon}</span>
                   {cat.label}
-                  {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto text-indigo-400" />}
+                  {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto" />}
                 </button>
               ))}
-            </div>
-
-            <div className="p-4 border-t border-slate-800 flex justify-end">
-               <button onClick={() => setIsFilterModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest transition-all">Close</button>
             </div>
           </div>
         </div>
@@ -619,41 +648,53 @@ const App: React.FC = () => {
 
       {/* Blueprint Detail Modal */}
       {selectedBlueprintForModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedBlueprintForModal(null)} />
-          <div className="relative bg-slate-900 border border-white/5 rounded-[2rem] md:rounded-[3rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-              <div className="flex items-center gap-4 md:gap-5">
-                <div className="bg-indigo-600/20 p-3 md:p-4 rounded-xl md:rounded-3xl text-indigo-400 shrink-0">{selectedBlueprintForModal.icon}</div>
-                <div><h3 className="text-lg md:text-2xl font-black text-white truncate">{selectedBlueprintForModal.name}</h3><p className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mt-0.5 md:mt-1">Granular Modules</p></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-8 py-8 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">{selectedBlueprintForModal.icon}</div>
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-tight">{selectedBlueprintForModal.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Select Sub-Modules</p>
+                </div>
               </div>
-              <button onClick={() => setSelectedBlueprintForModal(null)} className="p-2 text-slate-500 hover:text-white transition-colors"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={() => setSelectedBlueprintForModal(null)} className="text-slate-500 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
             </div>
-            <div className="p-4 md:p-10 space-y-3 md:space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-900/20">
+            <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950">
+              <div className="mb-4 p-4 border border-slate-800 bg-slate-900/30 rounded-md">
+                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">You can select specific granular sub-modules below, or just click "Add to Context" to include the core architecture of this feature.</p>
+              </div>
               {selectedBlueprintForModal.subcategories.map(sub => (
-                <label key={sub.id} className={`flex items-start gap-4 md:gap-6 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border transition-all cursor-pointer group ${selectedSubs.includes(sub.id) ? 'bg-indigo-600/10 border-indigo-500 shadow-xl' : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'}`}>
+                <label key={sub.id} className={`flex items-start gap-6 p-5 rounded-lg border transition-all cursor-pointer group ${selectedSubs.includes(sub.id) ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
                   <div className="pt-1 shrink-0">
                     <input type="checkbox" className="hidden" checked={selectedSubs.includes(sub.id)} onChange={() => setSelectedSubs(prev => prev.includes(sub.id) ? prev.filter(x => x !== sub.id) : [...prev, sub.id])} />
-                    <div className={`w-5 h-5 md:w-6 md:h-6 rounded-lg flex items-center justify-center border-2 ${selectedSubs.includes(sub.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 group-hover:border-slate-600'}`}>{selectedSubs.includes(sub.id) && <Check className="w-3 h-3 md:w-4 md:h-4 text-white" />}</div>
+                    <div className={`w-5 h-5 rounded border-2 ${selectedSubs.includes(sub.id) ? 'bg-slate-950 border-slate-950' : 'border-slate-700 group-hover:border-slate-500'} flex items-center justify-center transition-colors`}>
+                      {selectedSubs.includes(sub.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs md:text-sm font-black text-slate-200 mb-0.5 md:mb-1 uppercase tracking-tight truncate">{sub.label}</div>
-                    <div className="text-[10px] md:text-[11px] text-slate-500 font-medium leading-relaxed line-clamp-2">{sub.description}</div>
+                    <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${selectedSubs.includes(sub.id) ? 'text-slate-950' : 'text-slate-200'}`}>{sub.label}</div>
+                    <div className={`text-[11px] font-medium leading-relaxed ${selectedSubs.includes(sub.id) ? 'text-slate-600' : 'text-slate-500'}`}>{sub.description}</div>
                   </div>
                 </label>
               ))}
             </div>
-            <div className="p-6 md:p-10 bg-slate-950/80 border-t border-slate-800 flex flex-col sm:flex-row gap-3 md:gap-4">
-              <button onClick={() => setSelectedBlueprintForModal(null)} className="flex-1 py-3 md:py-4 px-6 rounded-xl md:rounded-2xl border border-slate-800 text-slate-500 font-black text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors">Cancel</button>
+            <div className="p-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4">
+              <button onClick={() => setSelectedBlueprintForModal(null)} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-colors">Cancel</button>
               <button onClick={() => {
                 const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
+                // If no subcategories selected, we mark it as 'Core Architecture'
+                const finalLabels = labels.length > 0 ? labels : ['Core Feature Context'];
+                
                 setActiveBlueprints(prev => {
                   const filtered = prev.filter(p => p.blueprintId !== selectedBlueprintForModal.id);
-                  return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, selectedSubLabels: labels }];
+                  return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, selectedSubLabels: finalLabels }];
                 });
                 setSelectedBlueprintForModal(null);
                 setSelectedSubs([]);
-              }} disabled={selectedSubs.length === 0} className="flex-[2] py-3 md:py-4 px-6 rounded-xl md:rounded-2xl bg-indigo-600 text-white font-black text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-indigo-500 shadow-2xl disabled:opacity-50 transition-all">Add to Context ({selectedSubs.length})</button>
+              }} className="flex-[2] py-3 px-6 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 shadow-md transition-all active:scale-95">
+                {selectedSubs.length > 0 ? `Add ${selectedSubs.length} Modules` : 'Add Core Feature'}
+              </button>
             </div>
           </div>
         </div>
