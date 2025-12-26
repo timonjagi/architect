@@ -8,7 +8,8 @@ export const optimizePrompt = async (
   config: PromptConfig
 ): Promise<OptimizationResult> => {
   // Always initialize with named parameter for apiKey right before the request
-  const apiKey = process.env.API_KEY;
+  //@ts-ignore
+  const apiKey = process.env.API_KEY || import.meta.env.VITE_API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure your environment is configured.");
   }
