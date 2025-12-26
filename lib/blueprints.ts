@@ -1,17 +1,21 @@
 
 import React from 'react';
-import { 
-  Lock, CreditCard, Layout, Table2, BarChart, Settings2, BellRing, Store, 
-  PackageSearch, Truck, Users, Rocket, CheckCircle2, BrainCircuit, 
+import {
+  Lock, CreditCard, Layout, Table2, BarChart, Settings2, BellRing, Store,
+  PackageSearch, Truck, Users, Rocket, CheckCircle2, BrainCircuit,
   Layers, Briefcase, ShoppingBag, Bot, Megaphone, LayoutDashboard, Cpu,
-  Quote, Target, HelpCircle, MailCheck, Building2, BookOpen, Link, 
+  Quote, Target, HelpCircle, MailCheck, Building2, BookOpen, Link,
   Share2, Search, Zap, PieChart, Activity, Globe, ShieldAlert,
   Terminal, Workflow, Cloud, FlaskConical, Languages, Award, Repeat,
   Clock, Image, ShieldCheck, Database, MessagesSquare, MousePointer2,
   TrendingUp, FileSearch, FileCode, SearchCode, Mail, Box, Store as StoreIcon,
   UserPlus, Shield, Bell, ListChecks, TicketPercent, Star, Eye, Share,
   ShieldCheck as ShieldIcon, Key, Network, Gavel, Handshake, Glasses, Sparkles,
-  FileJson, Cpu as CpuIcon, MessageSquare, UserCheck, Share2 as SocialIcon
+  FileJson, Cpu as CpuIcon, MessageSquare, UserCheck, Share2 as SocialIcon,
+  CalendarDays,
+  ClipboardCheck,
+  Timer,
+  UserRoundCheck
 } from 'lucide-react';
 
 export interface Blueprint {
@@ -28,6 +32,7 @@ export const CATEGORIES = [
   { id: 'all', label: 'All Modules', icon: React.createElement(Layers, { className: "w-4 h-4" }) },
   { id: 'saas', label: 'SaaS Core', icon: React.createElement(Briefcase, { className: "w-4 h-4" }) },
   { id: 'ecommerce', label: 'E-commerce', icon: React.createElement(ShoppingBag, { className: "w-4 h-4" }) },
+  { id: 'booking', label: 'Services & Booking', icon: React.createElement(CalendarDays, { className: "w-4 h-4" }) },
   { id: 'social', label: 'Social & Collab', icon: React.createElement(Users, { className: "w-4 h-4" }) },
   { id: 'ai', label: 'AI & Data', icon: React.createElement(Bot, { className: "w-4 h-4" }) },
   { id: 'marketing', label: 'Marketing', icon: React.createElement(Megaphone, { className: "w-4 h-4" }) },
@@ -223,6 +228,71 @@ export const BLUEPRINTS: Blueprint[] = [
     ]
   },
 
+  {
+    id: 'book-engine',
+    category: 'booking',
+    name: 'Booking Logic',
+    icon: React.createElement(CalendarDays, { className: "w-4 h-4" }),
+    badge: 'Core Engine',
+    prompt: "Advanced scheduling system with multi-timezone support, slot availability logic, and buffer times.",
+    subcategories: [
+      { id: 'slots', label: 'Slot Generation', description: 'Dynamic calculation of available windows based on staff schedules.' },
+      { id: 'buffer', label: 'Buffer Times', description: 'Preventing back-to-back bookings with automatic gap insertion.' },
+      { id: 'timezone', label: 'Global Booking', description: 'Auto-conversion of slots to user browser timezone.' }
+    ]
+  },
+  {
+    id: 'book-marketplace',
+    category: 'booking',
+    name: 'Service Marketplace',
+    icon: React.createElement(UserRoundCheck, { className: "w-4 h-4" }),
+    badge: 'Platform',
+    prompt: "A marketplace infrastructure for service providers (e.g., consultants, therapists, housekeepers).",
+    subcategories: [
+      { id: 'listing', label: 'Provider Listings', description: 'Rich profiles with portfolios, services offered, and dynamic pricing.' },
+      { id: 'approval', label: 'Vetting Workflow', description: 'Admin pipeline for reviewing and approving new providers.' },
+      { id: 'comm', label: 'Escrow Payouts', description: 'Holding funds until service delivery is confirmed by the client.' }
+    ]
+  },
+  {
+    id: 'book-availability',
+    category: 'booking',
+    name: 'Availability Management',
+    icon: React.createElement(Timer, { className: "w-4 h-4" }),
+    badge: 'Operations',
+    prompt: "Provider-facing tools to manage work hours, holidays, and sync with external calendars (iCal/Google).",
+    subcategories: [
+      { id: 'cal-sync', label: 'External Sync', description: 'Two-way synchronization with Google Calendar or Outlook.' },
+      { id: 'recurring', label: 'Recurring Shifts', description: 'Setting weekly availability patterns (e.g., Mon-Fri 9-5).' },
+      { id: 'exceptions', label: 'Blackout Dates', description: 'One-off availability overrides for vacations or sick leave.' }
+    ]
+  },
+  {
+    id: 'book-appointments',
+    category: 'booking',
+    name: 'Appointment Flow',
+    icon: React.createElement(ClipboardCheck, { className: "w-4 h-4" }),
+    badge: 'Conversion',
+    prompt: "End-to-end user experience for selecting, paying for, and managing appointments.",
+    subcategories: [
+      { id: 'intake', label: 'Intake Forms', description: 'Customizable questionnaires to gather info before the session.' },
+      { id: 'resched', label: 'Self-Service Rebooking', description: 'Allowing users to move appointments based on provider rules.' },
+      { id: 'reminders', label: 'Automated Reminders', description: 'SMS/Email alerts 24h and 1h before the start time.' }
+    ]
+  },
+  {
+    id: 'book-reviews',
+    category: 'booking',
+    name: 'Reputation & Trust',
+    icon: React.createElement(Award, { className: "w-4 h-4" }),
+    badge: 'Retention',
+    prompt: "Verified review system for services with specific metrics (e.g., punctuality, quality, value).",
+    subcategories: [
+      { id: 'metrics', label: 'Performance Metrics', description: 'Quantifiable scores calculated from user feedback.' },
+      { id: 'badges', label: 'Trust Badges', description: 'Automatic highlighting of "Top Rated" or "Fast Responder".' },
+      { id: 'verified', label: 'Purchase Lock', description: 'Strict validation ensuring only paying clients can leave feedback.' }
+    ]
+  },
   // Social & Collaboration
   {
     id: 'soc-activity-feed',
