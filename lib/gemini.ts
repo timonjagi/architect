@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types.ts";
+import { config } from 'dotenv';
 
+config({ path: '.env.local', '.env' }); // or .env.local
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
@@ -16,11 +18,11 @@ export const optimizePrompt = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const sourcesContext = config.sources.length > 0 
+  const sourcesContext = config.sources.length > 0
     ? `PROJECT DOCUMENTS PROVIDED:\n${config.sources.map(s => `--- ${s.name} ---\n${s.content}`).join('\n\n')}`
     : '';
 
-  const blueprintContext = config.selectedBlueprints?.length 
+  const blueprintContext = config.selectedBlueprints?.length
     ? `SELECTED ARCHITECTURAL MODULES:\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.selectedSubLabels.join(', ')}`).join('\n')}`
     : 'No specific blueprints selected.';
 
