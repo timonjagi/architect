@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types.ts";
 import { config } from 'dotenv';
 
-config({ path: '.env.local', '.env' }); // or .env.local
+config({ path: '.env' }); // or .env.local
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
