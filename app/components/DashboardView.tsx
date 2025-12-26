@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { 
+import {
   Code2, Terminal, Sparkles, RefreshCcw, Zap, Lock, BookOpen,
   FileText, Plus, Trash2, X, ChevronRight, Search, Settings2,
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell
 } from 'lucide-react';
-import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider } from '../../lib/types.ts';
-import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints.ts';
-import { optimizePrompt } from '../../lib/gemini.ts';
+import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider } from '../../lib/types';
+import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
+import { optimizePrompt } from '../../lib/gemini';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 const STYLING: Styling[] = ['Shadcn/UI', 'Tailwind CSS', 'Chakra UI', 'Styled Components', 'CSS Modules'];
@@ -79,7 +79,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isStackModalOpen, setIsStackModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [config, setConfig] = useState<Omit<PromptConfig, 'sources'>>({
     framework: 'Next.js',
     styling: 'Shadcn/UI',
@@ -114,11 +114,11 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setSources(prev => [...prev, { 
-          id: Math.random().toString(36).substr(2, 9), 
-          name: file.name, 
-          content: ev.target?.result as string, 
-          type: file.type 
+        setSources(prev => [...prev, {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          content: ev.target?.result as string,
+          type: file.type
         }]);
       };
       reader.readAsText(file);
@@ -187,7 +187,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500">
                   <Terminal className="w-4 h-4" /> 1. Functional Modules
                 </h2>
-                
+
                 <div className="flex items-center gap-2">
                   <button onClick={() => setIsFilterModalOpen(true)} className={`h-11 px-4 rounded-md border flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${activeCategory !== 'all' ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}>
                     <Filter className="w-3.5 h-3.5" /> Filter
@@ -310,11 +310,11 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
             <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm relative">
               <h2 className="text-xs font-bold flex items-center gap-2 mb-4 uppercase tracking-widest text-slate-500"><Sparkles className="w-4 h-4" /> 4. Custom Logic</h2>
-              <textarea 
-                value={rawPrompt} 
-                onChange={(e) => setRawPrompt(e.target.value)} 
-                placeholder="Define user stories, business rules, or specific edge cases..." 
-                className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700" 
+              <textarea
+                value={rawPrompt}
+                onChange={(e) => setRawPrompt(e.target.value)}
+                placeholder="Define user stories, business rules, or specific edge cases..."
+                className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700"
               />
               <button onClick={handleOptimize} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim() && sources.length === 0)} className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl">
                 {loading ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
@@ -377,7 +377,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <h3 className="text-sm font-black text-white uppercase tracking-widest">Architect Stack Config</h3>
               <button onClick={() => setIsStackModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-            
+
             {[
               { label: 'Framework', options: FRAMEWORKS, key: 'framework', type: 'single' },
               { label: 'Infrastructure', options: BACKENDS, key: 'backend', type: 'single' },
@@ -389,20 +389,20 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-4">{group.label}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {group.options.map(opt => {
-                    const isSelected = group.type === 'single' 
+                    const isSelected = group.type === 'single'
                       ? config[group.key as keyof typeof config] === opt
                       : (config[group.key as keyof typeof config] as any[]).includes(opt);
-                    
+
                     return (
-                      <button 
-                        key={opt as string} 
+                      <button
+                        key={opt as string}
                         onClick={() => {
                           if (group.type === 'single') {
-                            setConfig({...config, [group.key]: opt});
+                            setConfig({ ...config, [group.key]: opt });
                           } else {
                             toggleStackItem(group.key as any, opt);
                           }
-                        }} 
+                        }}
                         className={`px-3 py-2.5 rounded-md border text-[10px] font-bold transition-all ${isSelected ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
                       >
                         {opt as string}
@@ -429,9 +429,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {CATEGORIES.map(cat => (
-                <button 
-                  key={cat.id} 
-                  onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }} 
+                <button
+                  key={cat.id}
+                  onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }}
                   className={`flex items-center gap-4 px-5 py-4 rounded-xl text-[10px] font-black uppercase border transition-all ${activeCategory === cat.id ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-2 ring-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}`}
                 >
                   <span className={`${activeCategory === cat.id ? 'text-white' : 'text-slate-500'}`}>{cat.icon}</span>
@@ -458,7 +458,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Select Sub-Modules</p>
                 </div>
               </div>
-              <button onClick={() => {setSelectedBlueprintForModal(null); setSelectedSubs([]);}} className="text-slate-500 hover:text-white"><X className="w-6 h-6" /></button>
+              <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="text-slate-500 hover:text-white"><X className="w-6 h-6" /></button>
             </div>
             <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
               {selectedBlueprintForModal.subcategories.map(sub => (
@@ -475,7 +475,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               ))}
             </div>
             <div className="p-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4">
-              <button onClick={() => {setSelectedBlueprintForModal(null); setSelectedSubs([]);}} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase">Cancel</button>
+              <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase">Cancel</button>
               <button onClick={() => {
                 const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
                 const finalLabels = labels.length > 0 ? labels : ['Core Feature Context'];

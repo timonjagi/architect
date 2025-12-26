@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { LandingView } from './components/LandingView.tsx';
-import { DashboardView } from './components/DashboardView.tsx';
+import { LandingView } from './components/LandingView';
+import { DashboardView } from './components/DashboardView';
 
 /**
  * Main application entry point using state-based navigation.

@@ -1,4 +1,13 @@
 import React from 'react';
+import './globals.css';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Architect',
+  description: 'The Future of System Design',
+};
 
 interface RootLayoutProps {
   children?: React.ReactNode;
@@ -6,8 +15,10 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-white/10">
-      {children}
-    </div>
+    <html lang="en">
+      <body className={`${inter.className} min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-white/10`}>
+        {children}
+      </body>
+    </html>
   );
 }

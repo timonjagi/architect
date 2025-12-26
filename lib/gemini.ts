@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PromptConfig, OptimizationResult } from "./types.ts";
+import { PromptConfig, OptimizationResult } from "./types";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
@@ -9,7 +9,7 @@ export const optimizePrompt = async (
 ): Promise<OptimizationResult> => {
   // Always initialize with named parameter for apiKey right before the request
   //@ts-ignore
-  const apiKey = process.env.API_KEY || import.meta.env.VITE_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure your environment is configured.");
   }
