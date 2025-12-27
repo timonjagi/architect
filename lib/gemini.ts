@@ -52,7 +52,7 @@ export const optimizePrompt = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-2.5-flash",
       contents: `Prompt: ${rawPrompt || 'Design the system based on selected modules.'}`,
       config: {
         systemInstruction,
