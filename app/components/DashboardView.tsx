@@ -147,7 +147,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const toggleStackItem = (key: 'providers' | 'payments', val: any) => {
     setConfig(prev => {
-      const current = prev[key] || [];
+      const current = (prev[key] || []) as any[];
       const exists = current.includes(val);
       return {
         ...prev,

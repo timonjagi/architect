@@ -1,26 +1,22 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import { LandingView } from './components/LandingView';
-import { DashboardView } from './components/DashboardView';
 
 /**
- * Main application entry point using state-based navigation.
- * This avoids common routing issues in static deployment environments.
+ * Landing page route.
  */
 export default function Home() {
-  const [view, setView] = useState<'landing' | 'app'>('landing');
+  const router = useRouter();
 
-  const showApp = useCallback(() => setView('app'), []);
-  const showLanding = useCallback(() => setView('landing'), []);
+  const handleStart = () => {
+    router.push('/dashboard');
+  };
 
   return (
     <div className="w-full min-h-screen">
-      {view === 'landing' ? (
-        <LandingView onStart={showApp} />
-      ) : (
-        <DashboardView onBack={showLanding} />
-      )}
+      <LandingView onStart={handleStart} />
     </div>
   );
 }
