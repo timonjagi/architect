@@ -105,8 +105,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     customContext: ''
   });
 
-  const router = useRouter();
-
   // Get current user on mount
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
