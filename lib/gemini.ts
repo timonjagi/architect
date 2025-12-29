@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types";
+import { subscribe } from "diagnostics_channel";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
@@ -44,7 +45,7 @@ export const optimizePrompt = async (
     {
       "coldStartGuide": "Markdown for setup",
       "directoryStructure": "ASCII tree",
-      "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies" }],
+      "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies", "subtasks" }],
       "architectureNotes": "Boundaries/constraints",
       "fullMarkdownSpec": "Combined markdown doc"
     }
@@ -74,7 +75,8 @@ export const optimizePrompt = async (
                   testStrategy: { type: Type.STRING },
                   priority: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
                   files_involved: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  subtasks: { type: Type.ARRAY, items: { type: Type.OBJECT } }
                 },
                 required: ["id", "title", "description"]
               }

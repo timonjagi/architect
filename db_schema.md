@@ -10,13 +10,15 @@ Stores both draft and published projects with their configuration.
 - user_id: UUID (foreign key to auth.users)
 - name: VARCHAR (required)
 - description: TEXT
-- status: ENUM (draft, published) -- Drafts are projects with status='draft'
+- status: ENUM (draft, published) 
 - blueprint_config: JSONB -- Stores selected blueprints with sub-modules
 - raw_prompt: TEXT -- Stores user's raw requirement input
 - context_files: JSONB -- Array of uploaded context file references
 - framework: VARCHAR
 - styling: VARCHAR
 - backend: VARCHAR
+- notifications: JSONB
+- payments: VARCHAR
 - created_at: TIMESTAMP
 - updated_at: TIMESTAMP
 ```
@@ -26,7 +28,7 @@ Versioned specifications generated from projects.
 ```sql
 - id: UUID (primary key)
 - project_id: UUID (foreign key to projects)
-- version: VARCHAR (semver format: 1.0.0) -- Renamed from project_versions, uses semver
+- version: VARCHAR (semver format: 1.0.0) -- uses semver
 - title: VARCHAR
 - cold_start_guide: TEXT
 - directory_structure: JSONB
@@ -58,13 +60,10 @@ Stores uploaded project documentation and reference materials.
 2. User adds **blueprint_config** with selected blueprints and sub-modules
 3. User uploads **context_files** (optional)
 4. User enters **raw_prompt** with requirements
-5. System generates specification
-6. Auto-save persists draft state to database
-
-### Publishing Workflow
-1. User publishes draft project → creates new **spec** with `version: '1.0.0'`
-2. Subsequent publishes increment version (1.0.1, 1.1.0, 2.0.0)
-3. Each version stored with complete spec snapshot
+5. Auto-save persists draft state to database
+6. User generates specification
+6. System creates new **spec** with `version: '1.0.0'`
+7. Subsequent generations increment version (1.0.1, 1.1.0, 2.0.0)
 
 ## API Endpoints
 
@@ -77,8 +76,8 @@ Create new project
 ### PATCH /api/projects/[id]
 Auto-save updates to draft project (blueprint_config, raw_prompt, context_files)
 
-### POST /api/projects/[id]/publish
-Publish draft project → creates new spec with incremented semver
+### POST /api/projects/[id]/generate
+Generates specification → creates new spec with incremented semver
 
 ### GET /api/specs
 Fetch all specs for a project
