@@ -1,15 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PromptConfig, OptimizationResult } from "./types.ts";
+import { PromptConfig, GenerationResult } from "./types";
+import { subscribe } from "diagnostics_channel";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
-export const optimizePrompt = async (
+export const generateSpec = async (
   rawPrompt: string,
   config: PromptConfig
-): Promise<OptimizationResult> => {
+): Promise<GenerationResult> => {
   // Always initialize with named parameter for apiKey right before the request
   //@ts-ignore
-  const apiKey = process.env.API_KEY || import.meta.env.VITE_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure your environment is configured.");
   }
@@ -44,7 +45,7 @@ export const optimizePrompt = async (
     {
       "coldStartGuide": "Markdown for setup",
       "directoryStructure": "ASCII tree",
-      "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies" }],
+      "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies", "subtasks" }],
       "architectureNotes": "Boundaries/constraints",
       "fullMarkdownSpec": "Combined markdown doc"
     }
@@ -74,7 +75,8 @@ export const optimizePrompt = async (
                   testStrategy: { type: Type.STRING },
                   priority: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
                   files_involved: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  subtasks: { type: Type.ARRAY, items: { type: Type.OBJECT } }
                 },
                 required: ["id", "title", "description"]
               }
