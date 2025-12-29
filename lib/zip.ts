@@ -1,12 +1,12 @@
 import JSZip from 'jszip';
-import { OptimizationResult, Source } from './types';
+import { GenerationResult, Source } from './types';
 
 /**
  * Packs the generated specification and project sources into a structured ZIP file.
  */
 export const exportProjectBundle = async (
   projectName: string,
-  result: OptimizationResult,
+  result: GenerationResult,
   sources: Source[]
 ) => {
   const zip = new JSZip();

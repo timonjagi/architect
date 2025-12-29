@@ -9,7 +9,7 @@ import {
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell, FileSignature,
   AlignLeft, Type, Download, Save, History, Box, ExternalLink
 } from 'lucide-react';
-import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider } from '../../lib/types';
+import { Framework, Styling, Backend, PromptConfig, GenerationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
 import { generateSpec } from '../../lib/gemini';
 import { supabase } from '../../lib/supabase';
@@ -74,7 +74,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [result, setResult] = useState<OptimizationResult | null>(null);
+  const [result, setResult] = useState<GenerationResult | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'architecture' | 'files'>('tasks');
   const [sources, setSources] = useState<Source[]>([]);
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
@@ -164,7 +164,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setSources(prev => prev.filter(s => s.id !== id));
   };
 
-  const persistProject = async (currentResult: OptimizationResult | null) => {
+  const persistProject = async (currentResult: GenerationResult | null) => {
     setSaving(true);
     try {
       let projectId = currentProjectId;
