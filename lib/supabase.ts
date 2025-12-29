@@ -10,6 +10,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export const getSession = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+};
+
+export const signOut = async () => {
+  await supabase.auth.signOut();
+};
+
+
 /**`
  * SQL SCHEMA FOR REFERENCE:
  * 
