@@ -1,16 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PromptConfig, OptimizationResult } from "./types";
+import { PromptConfig, GenerationResult } from "./types";
 import { subscribe } from "diagnostics_channel";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
-export const optimizePrompt = async (
+export const generateSpec = async (
   rawPrompt: string,
   config: PromptConfig
-): Promise<OptimizationResult> => {
+): Promise<GenerationResult> => {
   // Always initialize with named parameter for apiKey right before the request
   //@ts-ignore
-  const apiKey = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("API Key is missing. Please ensure your environment is configured.");
   }

@@ -1,12 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
 // These would ideally be in process.env, but we provide placeholders for setup
-const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project-url.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/**
+/**`
  * SQL SCHEMA FOR REFERENCE:
  * 
  * create table projects (

@@ -41,7 +41,7 @@ export interface TaskItem {
   dependencies: string[];
 }
 
-export interface OptimizationResult {
+export interface GenerationResult {
   coldStartGuide: string;
   directoryStructure: string;
   implementationPlan: TaskItem[];

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
-import { optimizePrompt } from '../../lib/gemini';
+import { generateSpec } from '../../lib/gemini';
 import { supabase } from '../../lib/supabase';
 import { exportProjectBundle } from '../../lib/zip';
 
@@ -210,10 +210,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   };
 
-  const handleOptimize = async () => {
+  const handleGenerate = async () => {
     setLoading(true);
     try {
-      const data = await optimizePrompt(rawPrompt, { ...config, sources, selectedBlueprints: activeBlueprints });
+      const data = await generateSpec(rawPrompt, { ...config, sources, selectedBlueprints: activeBlueprints });
       setResult(data);
       // Automatically persist on success
       await persistProject(data);
@@ -436,7 +436,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 placeholder="Define unique user stories, complex business rules, or specific edge cases..."
                 className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700"
               />
-              <button onClick={handleOptimize} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim() && sources.length === 0)} className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl">
+              <button onClick={handleGenerate} disabled={loading || (activeBlueprints.length === 0 && !rawPrompt.trim() && sources.length === 0)} className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl">
                 {loading ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate System Spec</>}
               </button>
             </section>
