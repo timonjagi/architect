@@ -11,12 +11,16 @@ import {
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
 import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource } from '../../lib/hooks/useProjects';
+import { createClient } from '../../lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { LogOut, User as UserIcon } from 'lucide-react';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
+// ... (rest of constants stay same)
 const STYLING: Styling[] = ['Shadcn/UI', 'Tailwind CSS', 'Chakra UI', 'Styled Components', 'CSS Modules'];
 const BACKENDS: Backend[] = ['Supabase', 'Appwrite', 'Pocketbase', 'PostgreSQL', 'N8N (Workflows)'];
 const NOTIFICATIONS: NotificationProvider[] = ['Novu (In-App/Infra)', 'OneSignal (Push)', 'Twilio (SMS)', 'Resend (Email)'];
-const PAYMENTS: PaymentProvider[] = ['Stripe', 'LemonSqueezy', 'Paddle', 'PayPal'];
+const PAYMENTS: PaymentProvider[] = ['PayStack', 'Stripe', 'LemonSqueezy', 'Paddle', 'PayPal'];
 
 const ITEMS_PER_PAGE = 4;
 
@@ -73,6 +77,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { data: specs } = useProjectSpecs(selectedProjectId);
   const { data: sourcesData } = useSources(selectedProjectId);
   const addSource = useAddSource();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +106,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     backend: 'Supabase',
     tooling: ['TypeScript', 'Zod', 'React Hook Form'],
     providers: ['Resend (Email)'],
-    payments: ['Stripe'],
+    payments: ['PayStack'],
     customContext: ''
   });
 
@@ -243,7 +254,15 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Status: Connected</div>
-          <div className="w-8 h-8 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center"><UserCheck className="w-4 h-4 text-white" /></div>
+          <div className="h-4 w-px bg-slate-800 mx-2 hidden sm:block" />
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 hover:border-slate-700 transition-all group"
+          >
+            <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-red-400 transition-colors" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors">Sign Out</span>
+          </button>
+          <div className="w-8 h-8 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center"><UserIcon className="w-4 h-4 text-white" /></div>
         </div>
       </header>
 

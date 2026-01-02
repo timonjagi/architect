@@ -3,7 +3,7 @@ export type Styling = 'Tailwind CSS' | 'Shadcn/UI' | 'Chakra UI' | 'Styled Compo
 export type Backend = 'Supabase' | 'Appwrite' | 'Pocketbase' | 'PostgreSQL' | 'N8N (Workflows)';
 export type Tooling = 'TypeScript' | 'Zod' | 'React Hook Form' | 'Prisma' | 'Drizzle';
 export type NotificationProvider = 'Novu (In-App/Infra)' | 'OneSignal (Push)' | 'Twilio (SMS)' | 'Resend (Email)';
-export type PaymentProvider = 'Stripe' | 'LemonSqueezy' | 'Paddle' | 'PayPal';
+export type PaymentProvider = 'PayStack' | 'Stripe' | 'LemonSqueezy' | 'Paddle' | 'PayPal';
 
 export interface Source {
   id: string;

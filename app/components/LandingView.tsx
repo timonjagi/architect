@@ -1,15 +1,16 @@
 
 import React from 'react';
-import { 
-  ArrowRight, Rocket, Shield, Zap, Code2, Globe, Layers, 
-  Sparkles, CheckCircle2, Layout, Database, Smartphone 
+import {
+  ArrowRight, Rocket, Shield, Zap, Code2, Globe, Layers,
+  Sparkles, CheckCircle2, Layout, Database, Smartphone
 } from 'lucide-react';
 
 interface LandingViewProps {
   onStart: () => void;
+  user?: any;
 }
 
-export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
+export const LandingView: React.FC<LandingViewProps> = ({ onStart, user }) => {
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 overflow-x-hidden">
       {/* Navigation */}
@@ -24,11 +25,11 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest">Features</a>
             <a href="#blueprints" className="text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest">Blueprints</a>
-            <button 
+            <button
               onClick={onStart}
               className="px-6 py-2.5 rounded-full bg-white text-slate-950 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
             >
-              Launch App
+              {user ? 'Go to Dashboard' : 'Launch App'}
             </button>
           </div>
         </div>
@@ -50,11 +51,11 @@ export const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
             Stop writing vague prompts. Architect complex SaaS, E-commerce, and AI platforms using a visual blueprint system designed for senior engineers.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-16 duration-1000">
-            <button 
+            <button
               onClick={onStart}
               className="group px-10 py-5 rounded-full bg-white text-slate-950 font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 flex items-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.1)]"
             >
-              Start Building Now
+              {user ? 'Open Your Dashboard' : 'Start Building Now'}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button className="px-10 py-5 rounded-full border border-white/10 text-white font-black text-sm uppercase tracking-widest hover:bg-white/5 transition-all">

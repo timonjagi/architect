@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const project = await db.query.projects.findFirst({
-      where: eq(projects.id, params.id),
+      where: and(eq(projects.id, params.id), eq(projects.userId, user.id)),
     });
 
     if (!project) {
@@ -28,6 +36,13 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const [updatedProject] = await db
       .update(projects)
@@ -35,7 +50,7 @@ export async function PATCH(
         ...body,
         updatedAt: new Date(),
       })
-      .where(eq(projects.id, params.id))
+      .where(and(eq(projects.id, params.id), eq(projects.userId, user.id)))
       .returning();
 
     if (!updatedProject) {
