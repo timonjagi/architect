@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types";
+import { config } from "node:process";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
@@ -9,8 +10,9 @@ export const optimizePrompt = async (
 ): Promise<OptimizationResult> => {
   // Always initialize with named parameter for apiKey right before the request
   //@ts-ignore
-  const apiKey = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) {
+    console.log("API Key is missing. Please ensure your environment is configured.");
     throw new Error("API Key is missing. Please ensure your environment is configured.");
   }
 
@@ -21,7 +23,7 @@ export const optimizePrompt = async (
     : '';
 
   const blueprintContext = config.selectedBlueprints?.length
-    ? `SELECTED ARCHITECTURAL MODULES:\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.selectedSubLabels.join(', ')}`).join('\n')}`
+    ? `SELECTED ARCHITECTURAL MODULES:\n${config.selectedBlueprints.map(b => `- ${b.name}: ${b.prompt} ---\n\n Submodules: \n -${b.selectedSubLabels.join('\n -')}`).join('\n\n')}`
     : 'No specific blueprints selected.';
 
   const systemInstruction = `
@@ -29,10 +31,9 @@ export const optimizePrompt = async (
     Break down requirements into atomic tasks with logic, test strategies, and priority.
 
     CORE CONTEXT:
-    ${blueprintContext}
-
     ${sourcesContext}
-
+    
+  ${blueprintContext}
     TECH STACK:
     - Framework: ${config.framework}
     - Styling: ${config.styling}
@@ -50,6 +51,7 @@ export const optimizePrompt = async (
     }
   `;
 
+  console.log(systemInstruction);
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -75,7 +77,18 @@ export const optimizePrompt = async (
                   priority: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
                   files_involved: { type: Type.ARRAY, items: { type: Type.STRING } },
                   dependencies: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  subtasks: { type: Type.ARRAY, items: { type: Type.OBJECT } }
+                  subtasks: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING }
+                      },
+                      required: ["id", "title", "description"]
+                    }
+                  }
                 },
                 required: ["id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies", "subtasks"]
               }

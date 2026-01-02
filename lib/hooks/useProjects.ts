@@ -246,9 +246,11 @@ export function useGenerateSpec() {
         customContext: mappedProject.rawPrompt || ""
       };
 
+      console.log(config);
+
       // 3. Generate spec using Gemini SDK client-side
       const result = await optimizePrompt(mappedProject.rawPrompt || "Generate spec", config);
-
+      console.log(result);
       // 4. Save to project_specs via Supabase
       const { data: newSpec, error: insertError } = await supabase
         .from("project_specs")

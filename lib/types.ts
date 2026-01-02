@@ -15,6 +15,7 @@ export interface Source {
 export interface SelectedBlueprint {
   blueprintId: string;
   name: string;
+  prompt: string;
   selectedSubLabels: string[];
 }
 
@@ -54,6 +55,12 @@ export interface ProjectSpec {
   createdAt: string;
 }
 
+export interface SubTask {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface TaskItem {
   id: string;
   title: string;
@@ -63,6 +70,7 @@ export interface TaskItem {
   priority: 'high' | 'medium' | 'low';
   files_involved: string[];
   dependencies: string[];
+  subtasks: SubTask[];
 }
 
 export interface OptimizationResult {

@@ -62,6 +62,22 @@ const TaskCard: React.FC<{ task: TaskItem }> = ({ task }) => {
               <div className="flex flex-wrap gap-1.5">{task.files_involved.map(f => (<span key={f} className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[9px] font-mono text-slate-500">{f}</span>))}</div>
             </div>
           </div>
+          {task.subtasks && task.subtasks.length > 0 && (
+            <div>
+              <h6 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ListTodo className="w-3 h-3" /> Subtasks</h6>
+              <div className="space-y-2">
+                {task.subtasks.map(sub => (
+                  <div key={sub.id} className="flex items-start gap-3 p-3 bg-slate-950/50 border border-slate-800/50 rounded-md">
+                    <div className="w-4 h-4 rounded border border-slate-700 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-200 uppercase tracking-tight">{sub.title}</div>
+                      <div className="text-[10px] text-slate-500 leading-relaxed mt-0.5">{sub.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -105,7 +121,12 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [projectNameInput, setProjectNameInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [config, setConfig] = useState<Omit<PromptConfig, 'sources'>>({
     framework: 'Next.js',
@@ -167,6 +188,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Sync latest spec with result
   useEffect(() => {
     if (specs && specs.length > 0) {
+      console.log(specs);
       const latestSpec = specs[0] as ProjectSpec;
       setResult({
         coldStartGuide: latestSpec.coldStartGuide,
@@ -308,6 +330,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleOptimize = async () => {
     if (!selectedProjectId) {
+      console.log("No project selected");
+      console.log(selectedProjectId);
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
@@ -370,9 +394,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2 group"
                 >
                   {project?.name || 'Untitled Project'}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <Plus className="w-3 h-3 rotate-45" />
-                  </div>
+                  </span>
                 </button>
               )}
             </div>
@@ -436,13 +460,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => handleProjectSelect(p.id)}
                 className={`w-full text-left p-3 rounded-md text-[11px] font-bold uppercase transition-all group border ${selectedProjectId === p.id ? 'bg-white border-white text-slate-950' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-900 hover:text-slate-300'}`}
               >
-                <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center justify-between gap-2">
                   <span className="truncate">{p.name || "Untitled"}</span>
                   <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${selectedProjectId === p.id ? 'translate-x-0' : '-translate-x-1 opacity-0 group-hover:opacity-100'}`} />
-                </div>
-                <div className={`text-[8px] mt-1 font-black ${selectedProjectId === p.id ? 'text-slate-500' : 'text-slate-700'}`}>
-                  {new Date(p.createdAt).toLocaleDateString()}
-                </div>
+                </span>
+                <span className={`block text-[8px] mt-1 font-black ${selectedProjectId === p.id ? 'text-slate-500' : 'text-slate-700'}`}>
+                  {mounted ? new Date(p.createdAt).toLocaleDateString() : '...'}
+                </span>
               </button>
             ))}
           </div>
@@ -497,11 +521,11 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             setSelectedBlueprintForModal(bp);
                             setSelectedSubs(activeBlueprints.find(ab => ab.blueprintId === bp.id)?.selectedSubLabels.map(l => bp.subcategories.find(s => s.label === l)?.id || '').filter(id => id !== '') || []);
                           }} className={`p-4 rounded-lg border transition-all text-left group flex flex-col gap-3 ${isActive ? 'bg-white border-white' : 'border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700'}`}>
-                            <div className={`p-2 rounded-md transition-colors w-fit ${isActive ? 'bg-slate-950 text-white' : 'bg-slate-800 group-hover:bg-slate-700'}`}>{bp.icon}</div>
-                            <div className="min-w-0">
+                            <span className={`block p-2 rounded-md transition-colors w-fit ${isActive ? 'bg-slate-950 text-white' : 'bg-slate-800 group-hover:bg-slate-700'}`}>{bp.icon}</span>
+                            <span className="block min-w-0">
                               <span className={`text-xs font-bold block truncate ${isActive ? 'text-slate-950' : 'text-slate-100'}`}>{bp.name}</span>
                               <span className={`text-[8px] uppercase font-black tracking-widest ${isActive ? 'text-slate-500' : 'text-slate-500'}`}>{bp.badge}</span>
-                            </div>
+                            </span>
                           </button>
                         );
                       })}
@@ -790,10 +814,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase transition-colors hover:bg-slate-900">Cancel</button>
               <button onClick={() => {
                 const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
-                const finalLabels = labels.length > 0 ? labels : ['Core Feature Context'];
+                const finalLabels = labels.length > 0 ? [...labels] : [];
                 setActiveBlueprints(prev => {
                   const filtered = prev.filter(p => p.blueprintId !== selectedBlueprintForModal.id);
-                  return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, selectedSubLabels: finalLabels }];
+                  return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, prompt: selectedBlueprintForModal.prompt, selectedSubLabels: finalLabels }];
                 });
                 setSelectedBlueprintForModal(null);
                 setSelectedSubs([]);
