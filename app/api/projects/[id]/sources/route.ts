@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -18,7 +19,7 @@ export async function GET(
 
     // Verify project ownership
     const project = await db.query.projects.findFirst({
-      where: and(eq(projects.id, params.id), eq(projects.userId, user.id)),
+      where: and(eq(projects.id, id), eq(projects.userId, user.id)),
     });
 
     if (!project) {
@@ -26,7 +27,7 @@ export async function GET(
     }
 
     const sources = await db.query.projectSources.findMany({
-      where: eq(projectSources.projectId, params.id),
+      where: eq(projectSources.projectId, id),
     });
 
     return NextResponse.json(sources);
@@ -38,9 +39,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -50,7 +52,7 @@ export async function POST(
 
     // Verify project ownership
     const project = await db.query.projects.findFirst({
-      where: and(eq(projects.id, params.id), eq(projects.userId, user.id)),
+      where: and(eq(projects.id, id), eq(projects.userId, user.id)),
     });
 
     if (!project) {
@@ -59,7 +61,7 @@ export async function POST(
 
     const body = await req.json();
     const [newSource] = await db.insert(projectSources).values({
-      projectId: params.id,
+      projectId: id,
       fileName: body.fileName,
       fileType: body.fileType,
       content: body.content,

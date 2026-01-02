@@ -6,11 +6,11 @@ import {
   FileText, Plus, Trash2, X, ChevronRight, Search, Settings2,
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
-  Check, FileUp, FileCode, HardDrive, CreditCard, Bell
+  Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
-import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource } from '../../lib/hooks/useProjects';
+import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
 import { createClient } from '../../lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut, User as UserIcon } from 'lucide-react';
@@ -75,7 +75,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const updateProject = useUpdateProject();
   const generateSpec = useGenerateSpec();
   const { data: specs } = useProjectSpecs(selectedProjectId);
-  const { data: sourcesData } = useSources(selectedProjectId);
+  const { data: sourcesData, isLoading: sourcesLoading, isError: sourcesError } = useSources(selectedProjectId);
   const addSource = useAddSource();
   const router = useRouter();
   const supabase = createClient();
@@ -201,10 +201,11 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     });
   };
 
-  const removeSource = (id: string) => {
-    // Note: Need useDeleteSource hook or similar. For now we just filter locally to provide feedback
-    // but a real implementation would call useDeleteSource.
-    console.log("Remove source", id);
+  const deleteSource = useDeleteSource();
+
+  const removeSource = (sourceId: string) => {
+    if (!selectedProjectId) return;
+    deleteSource.mutate({ projectId: selectedProjectId, sourceId });
   };
 
   const handleOptimize = async () => {
@@ -402,13 +403,32 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm relative">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500"><HardDrive className="w-4 h-4" /> 3. Project Context</h2>
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-md text-[9px] font-black uppercase tracking-widest transition-all">
-                      <Plus className="w-3.5 h-3.5" /> Add Doc
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={addSource.isPending || !selectedProjectId}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 disabled:opacity-50 hover:border-slate-600 rounded-md text-[9px] font-black uppercase tracking-widest transition-all"
+                    >
+                      {addSource.isPending ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5" />
+                      )}
+                      Add Doc
                     </button>
                     <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                   </div>
 
-                  {!sourcesData || sourcesData.length === 0 ? (
+                  {sourcesLoading ? (
+                    <div className="py-8 flex flex-col items-center justify-center gap-3">
+                      <div className="w-5 h-5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Scanning Files...</p>
+                    </div>
+                  ) : sourcesError ? (
+                    <div className="py-8 text-center bg-red-500/5 border border-red-500/10 rounded-lg">
+                      <AlertCircle className="w-5 h-5 text-red-500 mx-auto mb-2" />
+                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Failed to load context</p>
+                    </div>
+                  ) : !sourcesData || sourcesData.length === 0 ? (
                     <div className="border-2 border-dashed border-slate-900 rounded-lg p-6 text-center">
                       <FileUp className="w-6 h-6 text-slate-800 mx-auto mb-3" />
                       <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Optional: Upload specs, DB schemas, or wireframes</p>
@@ -423,8 +443,16 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             </div>
                             <span className="text-[10px] font-bold text-slate-200 truncate uppercase">{src.name}</span>
                           </div>
-                          <button onClick={() => removeSource(src.id)} className="p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                            <Trash2 className="w-3.5 h-3.5" />
+                          <button
+                            onClick={() => removeSource(src.id)}
+                            disabled={deleteSource.isPending}
+                            className="p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                          >
+                            {deleteSource.isPending && deleteSource.variables?.sourceId === src.id ? (
+                              <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         </div>
                       ))}

@@ -99,6 +99,22 @@ export function useAddSource() {
   });
 }
 
+export function useDeleteSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, sourceId }: { projectId: string; sourceId: string }) => {
+      const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete source");
+      return res.json();
+    },
+    onSuccess: (data: any, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "sources"] });
+    },
+  });
+}
+
 export function useProjectSpecs(projectId: string | null) {
   return useQuery({
     queryKey: ["projects", projectId, "specs"],
