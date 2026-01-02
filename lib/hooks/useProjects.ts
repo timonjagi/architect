@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Project, ProjectSpec, Source } from "../types";
 import { createClient } from "../supabase/client";
-import { optimizePrompt } from "../gemini";
+import { optimizePrompt } from "../ai";
 import { PromptConfig } from "../types";
 
 const mapProject = (p: any): Project => ({
@@ -35,6 +35,7 @@ const mapProjectSpec = (s: any): ProjectSpec => ({
   architectureNotes: s.architecture_notes || "",
   fullMarkdownSpec: s.full_markdown_spec || "",
   createdAt: s.created_at,
+  version: s.version,
 });
 
 export function useProjects() {

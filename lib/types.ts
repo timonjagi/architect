@@ -55,6 +55,7 @@ export interface ProjectSpec {
   architectureNotes: string | null;
   fullMarkdownSpec: string | null;
   createdAt: string;
+  version: string;
 }
 
 export interface SubTask {

@@ -180,6 +180,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Sync state with fetched project
   useEffect(() => {
     if (project) {
+      console.log(project)
       setRawPrompt(project.rawPrompt || '');
       setProjectNameInput(project.name || '');
       if (project.blueprintConfig && project.blueprintConfig?.selectedBlueprints) {
@@ -250,7 +251,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   // Auto-save logic
   useEffect(() => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !project) return;
+
     const timer = setTimeout(() => {
       updateProject.mutate({
         id: selectedProjectId,
@@ -267,7 +269,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       });
     }, 2000);
     return () => clearTimeout(timer);
-  }, [rawPrompt, activeBlueprints, config, selectedProjectId]);
+  }, [rawPrompt, activeBlueprints, config, selectedProjectId, project]);
 
   const filteredBlueprints = useMemo(() => {
     return BLUEPRINTS.filter(bp => {
@@ -569,8 +571,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         );
                       })}
                     </div>
+
+
                     {totalPages > 1 && (
-                      <div className="mt-6 pt-4 border-t border-slate-900 flex items-center justify-between">
+                      <div className="mt-6 py-4 border-t border-slate-900 flex items-center justify-between">
                         <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
                         <span className="text-[10px] font-black text-slate-600 uppercase">Page {currentPage} of {totalPages}</span>
                         <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors"><ChevronRight className="w-4 h-4" /></button>
@@ -578,13 +582,23 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     )}
                   </div>
 
-                  {activeBlueprints.map(ab => (
-                    <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
-                      {ab.name}
-                      <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+                  {activeBlueprints.length && (
+                    <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 duration-300 border-t border-slate-900 pt-3">
+
+                      {activeBlueprints.length > 0 &&
+                        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 duration-300 pt-3">
+                          {activeBlueprints.map(ab => (
+                            <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
+                              {ab.name}
+                              <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+                            </div>
+                          ))}
+                        </div>
+                      }
                     </div>
-                  ))}
+                  )}
                 </section>
+
 
                 <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
@@ -620,10 +634,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setIsPasteModalOpen(true)}
-                        className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-md text-[9px] font-black uppercase tracking-widest hover:border-slate-600 transition-all"
+                        className="flex items-center gap-2  px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-md text-[9px] font-black uppercase tracking-widest hover:border-slate-600 transition-all"
                       >
+                        <ClipboardList className="w-3 h-3" />
                         Paste
                       </button>
+
+
                       <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={addSource.isPending}
@@ -632,9 +649,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         {addSource.isPending ? (
                           <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
-                          <Plus className="w-3.5 h-3.5" />
+                          <FileUp className="w-3 h-3" />
                         )}
-                        Add Doc
+                        Upload
                       </button>
                     </div>
                     <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
@@ -719,6 +736,15 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex gap-2 items-center">
+
+                        {['full-spec', 'tasks', 'architecture', 'file structure'].map(tab => (
+                          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
+                        ))}
+                      </div>
+
+
+
+                      <div className="flex items-center gap-2">
                         {specs && specs.length > 0 && (
                           <div className="flex items-center gap-2 mr-2">
                             <select
@@ -732,15 +758,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             </select>
                           </div>
                         )}
-                        {['full-spec', 'tasks', 'architecture', 'file structure'].map(tab => (
-                          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => { navigator.clipboard.writeText(result?.fullMarkdownSpec || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">
-                          {copied ? 'Copied' : 'Copy Spec'}
-                        </button>
-                        <button onClick={() => setIsExportModalOpen(true)} className="px-4 py-2 rounded-md bg-slate-100 border border-slate-200 text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-2">
+                        <button onClick={() => setIsExportModalOpen(true)} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">
                           <Save className="w-3 h-3" /> Export
                         </button>
                       </div>
@@ -990,7 +1008,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </div>
           )
         }
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };

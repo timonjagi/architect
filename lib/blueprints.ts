@@ -49,7 +49,7 @@ export const BLUEPRINTS: Blueprint[] = [
     name: 'RBAC & Multi-Tenancy',
     icon: React.createElement(Lock, { className: "w-4 h-4" }),
     badge: 'Security',
-    prompt: "Advanced multi-tenant authentication with Row Level Security and Role-Based Access Control.",
+    prompt: "A robust, enterprise-grade authentication system supporting multi-tenancy. Must implementation Row Level Security (RLS) to strictly isolate data by organization_id. Support Role-Based Access Control (RBAC) with granular permissions for Owners, Admins, and Members.",
     subcategories: [
       { id: 'rls', label: 'Supabase RLS', description: 'Policy-driven data isolation per organization.' },
       { id: 'roles', label: 'Dynamic Roles', description: 'Admin, Member, and Viewer permission levels.' },
@@ -62,7 +62,7 @@ export const BLUEPRINTS: Blueprint[] = [
     name: 'Subscription Engine',
     icon: React.createElement(CreditCard, { className: "w-4 h-4" }),
     badge: 'Monetization',
-    prompt: "Tiered subscription management with Stripe or LemonSqueezy integration.",
+    prompt: "A complete monetization engine integrating Stripe or LemonSqueezy. Must support tiered pricing models (Free, Pro, Enterprise), handle upgrade/downgrade logic, manage entitlements based on active status, and process webhooks for asynchronous payment states.",
     subcategories: [
       { id: 'tiers', label: 'Pricing Plans', description: 'Support for Free, Pro, and Enterprise tiers.' },
       { id: 'webhooks', label: 'Stripe Webhooks', description: 'Listen for checkout.session.completed and subscriptions.' },
@@ -114,7 +114,7 @@ export const BLUEPRINTS: Blueprint[] = [
     name: 'Webhook Orchestration',
     icon: React.createElement(Network, { className: "w-4 h-4" }),
     badge: 'Automation',
-    prompt: "Inbound and outbound webhook systems for third-party developer integrations.",
+    prompt: "A scalable webhook dispatching system allowing external developers to subscribe to internal events. Includes strict security signing (HMAC), exponential backoff for failed delivery, and a UI for users to manage their endpoint configurations.",
     subcategories: [
       { id: 'outgoing', label: 'Event Broadcast', description: 'System for users to subscribe their own URLs to app events.' },
       { id: 'signing', label: 'Payload Signing', description: 'Security layer (HMAC) to ensure webhook authenticity.' },
@@ -607,7 +607,7 @@ export const BLUEPRINTS: Blueprint[] = [
     name: 'Application Shell',
     icon: React.createElement(Layout, { className: "w-4 h-4" }),
     badge: 'Navigation',
-    prompt: "Primary application structure with sidebars and global navigation.",
+    prompt: "The foundational application shell layout. Includes a responsive collapsible sidebar, a global header with user menus and breadcrumbs, and a command palette (Ctrl+K) for quick navigation. Must be mobile-responsive and accessible.",
     subcategories: [
       { id: 'sidebar', label: 'Sidebar', description: 'Multi-level navigation.' },
       { id: 'command', label: 'Command Bar', description: 'Global quick action palette.' },
