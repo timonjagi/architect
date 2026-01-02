@@ -6,14 +6,15 @@ import {
   FileText, Plus, Trash2, X, ChevronRight, Search, Settings2,
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
-  Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle
+  Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle,
+  Save
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
 import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
 import { createClient } from '../../lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 // ... (rest of constants stay same)
@@ -98,6 +99,12 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isStackModalOpen, setIsStackModalOpen] = useState(false);
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pastedName, setPastedName] = useState('');
+  const [pastedContent, setPastedContent] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [projectNameInput, setProjectNameInput] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState<Omit<PromptConfig, 'sources'>>({
@@ -110,10 +117,40 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     customContext: ''
   });
 
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Sync selectedProjectId with query params
+  useEffect(() => {
+    const projectId = searchParams.get('project');
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
+  }, [searchParams]);
+
+  // Update URL when selectedProjectId changes
+  const updateProjectQuery = (id: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (id) {
+      params.set('project', id);
+    } else {
+      params.delete('project');
+    }
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  // Auto-select latest project if none is selected
+  useEffect(() => {
+    if (!searchParams.get('project') && projectsData && projectsData.length > 0) {
+      updateProjectQuery(projectsData[0].id);
+    }
+  }, [projectsData, searchParams]);
+
   // Sync state with fetched project
   useEffect(() => {
     if (project) {
       setRawPrompt(project.rawPrompt || '');
+      setProjectNameInput(project.name || '');
       setActiveBlueprints(project.blueprintConfig?.selectedBlueprints || []);
       setConfig({
         framework: project.framework as Framework || 'Next.js',
@@ -182,14 +219,27 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     return filteredBlueprints.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredBlueprints, currentPage]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !selectedProjectId) return;
+    if (!files) return;
+
+    let projectId = selectedProjectId;
+    if (!projectId) {
+      try {
+        const newProject = await createProject.mutateAsync("New Project");
+        projectId = newProject.id;
+        setSelectedProjectId(projectId);
+      } catch (err) {
+        console.error("Failed to auto-create project for upload:", err);
+        return;
+      }
+    }
+
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         addSource.mutate({
-          projectId: selectedProjectId,
+          projectId: projectId!,
           source: {
             name: file.name,
             content: ev.target?.result as string,
@@ -201,6 +251,37 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     });
   };
 
+  const handlePasteSubmit = async () => {
+    if (!pastedName.trim() || !pastedContent.trim()) return;
+
+    let projectId = selectedProjectId;
+    if (!projectId) {
+      try {
+        const newProject = await createProject.mutateAsync("New Project");
+        projectId = newProject.id;
+        updateProjectQuery(projectId);
+      } catch (err) {
+        console.error("Failed to auto-create project for paste:", err);
+        return;
+      }
+    }
+
+    addSource.mutate({
+      projectId: projectId!,
+      source: {
+        name: pastedName.trim(),
+        content: pastedContent.trim(),
+        type: 'pasted'
+      }
+    }, {
+      onSuccess: () => {
+        setPastedName('');
+        setPastedContent('');
+        setIsPasteModalOpen(false);
+      }
+    });
+  };
+
   const deleteSource = useDeleteSource();
 
   const removeSource = (sourceId: string) => {
@@ -208,11 +289,28 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     deleteSource.mutate({ projectId: selectedProjectId, sourceId });
   };
 
+  const handleUpdateProjectName = () => {
+    if (!selectedProjectId || !projectNameInput.trim()) {
+      setIsEditingName(false);
+      return;
+    }
+    updateProject.mutate({
+      id: selectedProjectId,
+      data: { name: projectNameInput.trim() }
+    });
+    setIsEditingName(false);
+  };
+
+  const handleProjectSelect = (id: string) => {
+    updateProjectQuery(id);
+    setIsSidebarOpen(false);
+  };
+
   const handleOptimize = async () => {
     if (!selectedProjectId) {
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
-          setSelectedProjectId(newProject.id);
+          updateProjectQuery(newProject.id);
           generateSpec.mutate(newProject.id);
         }
       });
@@ -244,52 +342,98 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-white/20">
       <header className="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-950 shrink-0 sticky top-0 z-40">
         <div className="flex items-center gap-4">
+          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-1.5 hover:bg-slate-900 rounded-md transition-colors text-slate-400">
+            <Menu className="w-5 h-5" />
+          </button>
           <button onClick={onBack} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="bg-white p-1 rounded-md">
               <Code2 className="w-4 h-4 text-slate-950" />
             </div>
-            <span className="text-sm font-bold tracking-tight text-white uppercase">Architect</span>
+            <span className="text-sm font-bold tracking-tight text-white uppercase hidden sm:block">Architect</span>
           </button>
           <div className="h-4 w-px bg-slate-800 mx-2 hidden md:block" />
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">System Configurator</div>
+
+          {selectedProjectId ? (
+            <div className="flex items-center gap-2">
+              {isEditingName ? (
+                <input
+                  autoFocus
+                  value={projectNameInput}
+                  onChange={(e) => setProjectNameInput(e.target.value)}
+                  onBlur={handleUpdateProjectName}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateProjectName()}
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] font-black text-white uppercase tracking-widest outline-none focus:border-white transition-all w-48"
+                />
+              ) : (
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2 group"
+                >
+                  {project?.name || 'Untitled Project'}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Plus className="w-3 h-3 rotate-45" />
+                  </div>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">System Configurator</div>
+          )}
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Status: Connected</div>
-          <div className="h-4 w-px bg-slate-800 mx-2 hidden sm:block" />
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden lg:block">Status: Connected</div>
+          <div className="h-4 w-px bg-slate-800 mx-2 hidden lg:block" />
           <button
             onClick={handleSignOut}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 hover:border-slate-700 transition-all group"
           >
             <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-red-400 transition-colors" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors">Sign Out</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white transition-colors hidden sm:block">Sign Out</span>
           </button>
           <div className="w-8 h-8 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center"><UserIcon className="w-4 h-4 text-white" /></div>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Project Vault Sidebar */}
-        <aside className="w-64 border-r border-slate-800 bg-slate-950/50 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+        <aside className={`
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+          md:translate-x-0 fixed md:relative z-[60] md:z-auto
+          w-64 h-full border-r border-slate-800 bg-slate-950 flex flex-col shrink-0 transition-transform duration-300 ease-in-out
+        `}>
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><HardDrive className="w-3 h-3" /> Project Vault</h3>
-            <button
-              onClick={() => {
-                createProject.mutate("New Project", {
-                  onSuccess: (newProject) => setSelectedProjectId(newProject.id)
-                });
-              }}
-              className="p-1 hover:bg-slate-900 rounded-md text-slate-500 hover:text-white transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  createProject.mutate("New Project", {
+                    onSuccess: (newProject) => updateProjectQuery(newProject.id)
+                  });
+                }}
+                className="p-1 hover:bg-slate-900 rounded-md text-slate-500 hover:text-white transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 hover:bg-slate-900 rounded-md text-slate-500 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 p-2 space-y-1">
+          <div className="flex-1 p-2 space-y-1 overflow-y-auto custom-scrollbar">
             {projectsLoading ? (
               <div className="p-4 flex justify-center"><RefreshCcw className="w-4 h-4 animate-spin text-slate-700" /></div>
             ) : projectsData?.map((p: any) => (
               <button
                 key={p.id}
-                onClick={() => setSelectedProjectId(p.id)}
+                onClick={() => handleProjectSelect(p.id)}
                 className={`w-full text-left p-3 rounded-md text-[11px] font-bold uppercase transition-all group border ${selectedProjectId === p.id ? 'bg-white border-white text-slate-950' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-900 hover:text-slate-300'}`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -403,18 +547,26 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm relative">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-500"><HardDrive className="w-4 h-4" /> 3. Project Context</h2>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={addSource.isPending || !selectedProjectId}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 disabled:opacity-50 hover:border-slate-600 rounded-md text-[9px] font-black uppercase tracking-widest transition-all"
-                    >
-                      {addSource.isPending ? (
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <Plus className="w-3.5 h-3.5" />
-                      )}
-                      Add Doc
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsPasteModalOpen(true)}
+                        className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-md text-[9px] font-black uppercase tracking-widest hover:border-slate-600 transition-all"
+                      >
+                        Paste
+                      </button>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={addSource.isPending}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 disabled:opacity-50 hover:border-slate-600 rounded-md text-[9px] font-black uppercase tracking-widest transition-all"
+                      >
+                        {addSource.isPending ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5" />
+                        )}
+                        Add Doc
+                      </button>
+                    </div>
                     <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                   </div>
 
@@ -439,7 +591,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <div key={src.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-md group">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="p-1.5 bg-slate-950 border border-slate-800 rounded text-slate-500">
-                              {src.name.endsWith('.tsx') || src.name.endsWith('.ts') ? <FileCode className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                              {src.name?.endsWith?.('.tsx') || src.name?.endsWith?.('.ts') ? <FileCode className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
                             </div>
                             <span className="text-[10px] font-bold text-slate-200 truncate uppercase">{src.name}</span>
                           </div>
@@ -649,6 +801,45 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 {selectedSubs.length > 0 ? `Add ${selectedSubs.length} Modules` : 'Add Core Context'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isPasteModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Paste Project Source</h3>
+              <button onClick={() => setIsPasteModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Document Title</label>
+                <input
+                  value={pastedName}
+                  onChange={(e) => setPastedName(e.target.value)}
+                  placeholder="e.g. system_architecture.md"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-md px-4 py-3 text-xs outline-none text-white font-medium focus:border-slate-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Content</label>
+                <textarea
+                  value={pastedContent}
+                  onChange={(e) => setPastedContent(e.target.value)}
+                  placeholder="Paste documentation, requirements, or code here..."
+                  className="w-full h-48 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs text-white outline-none resize-none font-mono focus:border-slate-500 transition-all custom-scrollbar"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handlePasteSubmit}
+              disabled={addSource.isPending || !pastedName.trim() || !pastedContent.trim()}
+              className="w-full py-4 bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-md hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 transition-all flex items-center justify-center gap-2"
+            >
+              {addSource.isPending ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {addSource.isPending ? 'Saving...' : 'Add Source'}
+            </button>
           </div>
         </div>
       )}
