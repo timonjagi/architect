@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types";
-import { subscribe } from "diagnostics_channel";
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
