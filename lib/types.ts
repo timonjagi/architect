@@ -30,6 +30,30 @@ export interface PromptConfig {
   selectedBlueprints?: SelectedBlueprint[];
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  framework: string | null;
+  styling: string | null;
+  backend: string | null;
+  notifications: string[] | null;
+  payments: string | null;
+  rawPrompt: string | null;
+  blueprintConfig: any;
+  createdAt: string;
+}
+
+export interface ProjectSpec {
+  id: string;
+  projectId: string;
+  coldStartGuide: string;
+  tasks: TaskItem[];
+  implementationPlan: any;
+  directoryStructure: any;
+  createdAt: string;
+}
+
 export interface TaskItem {
   id: string;
   title: string;
