@@ -9,7 +9,7 @@ import {
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle,
   Save
 } from 'lucide-react';
-import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec } from '../../lib/types';
+import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec, StateManagement } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
 import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
 import { createClient } from '../../lib/supabase/client';
@@ -24,6 +24,7 @@ const STYLING: Styling[] = ['Shadcn/UI', 'Tailwind CSS', 'Chakra UI', 'Styled Co
 const BACKENDS: Backend[] = ['Supabase', 'Appwrite', 'Pocketbase', 'PostgreSQL', 'N8N (Workflows)'];
 const NOTIFICATIONS: NotificationProvider[] = ['Novu (In-App/Infra)', 'OneSignal (Push)', 'Twilio (SMS)', 'Resend (Email)'];
 const PAYMENTS: PaymentProvider[] = ['PayStack', 'Stripe', 'LemonSqueezy', 'Paddle', 'PayPal'];
+const STATE_MANAGEMENT: StateManagement[] = ['React Query', 'Redux Toolkit', 'Zustand', 'Context API', 'None'];
 
 const ITEMS_PER_PAGE = 4;
 
@@ -145,6 +146,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     tooling: ['TypeScript', 'Zod', 'React Hook Form'],
     providers: ['Resend (Email)'],
     payments: ['PayStack'],
+    stateManagement: 'React Query',
     customContext: ''
   });
 
@@ -180,7 +182,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Sync state with fetched project
   useEffect(() => {
     if (project) {
-      console.log(project)
+      // console.log(project)
       setRawPrompt(project.rawPrompt || '');
       setProjectNameInput(project.name || '');
       if (project.blueprintConfig && project.blueprintConfig?.selectedBlueprints) {
@@ -193,6 +195,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         tooling: (project as any).tooling || ['TypeScript', 'Zod', 'React Hook Form'],
         providers: (project.notifications as NotificationProvider[]) || ['Resend (Email)'],
         payments: project.payments ? [project.payments as PaymentProvider] : ['Stripe'],
+        stateManagement: project.stateManagement as StateManagement || 'React Query',
         customContext: project.description || ''
       });
     }
@@ -625,6 +628,12 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <span className="text-slate-500 font-black mr-1">PAY:</span> {p}
                       </div>
                     ))}
+
+                    {config.stateManagement && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-[10px] font-bold text-slate-100 uppercase">
+                        <span className="text-slate-500 font-black mr-1">STATE:</span> {config.stateManagement}
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -811,7 +820,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   { label: 'Infrastructure', options: BACKENDS, key: 'backend', type: 'single' },
                   { label: 'Styling', options: STYLING, key: 'styling', type: 'single' },
                   { label: 'Notifications', options: NOTIFICATIONS, key: 'providers', type: 'multi' },
-                  { label: 'Payments', options: PAYMENTS, key: 'payments', type: 'multi' }
+                  { label: 'Payments', options: PAYMENTS, key: 'payments', type: 'multi' },
+                  { label: 'State Management', options: STATE_MANAGEMENT, key: 'stateManagement', type: 'single' }
                 ].map(group => (
                   <div key={group.label} className="space-y-4">
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">{group.label}</label>

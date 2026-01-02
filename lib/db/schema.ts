@@ -14,6 +14,7 @@ export const projects = pgTable("projects", {
   framework: text("framework"),
   styling: text("styling"),
   backend: text("backend"),
+  stateManagement: text("state_management"),
   notifications: jsonb("notifications"),
   payments: text("payments"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

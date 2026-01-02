@@ -8,7 +8,7 @@ import { BLUEPRINTS } from './blueprints';
 // config({ path: '.env.local' }); // or .env.local
 
 const openrouter = createOpenRouter({
-  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || "",
 });
 
 // Define the schema using Zod with detailed descriptions
@@ -47,7 +47,7 @@ export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
 ): Promise<OptimizationResult> => {
-  if (!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
+  if (!(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY)) {
     console.error("OPENROUTER_API_KEY is missing.");
     throw new Error("OPENROUTER_API_KEY is missing.");
   }

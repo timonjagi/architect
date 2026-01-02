@@ -4,6 +4,7 @@ export type Backend = 'Supabase' | 'Appwrite' | 'Pocketbase' | 'PostgreSQL' | 'N
 export type Tooling = 'TypeScript' | 'Zod' | 'React Hook Form' | 'Prisma' | 'Drizzle';
 export type NotificationProvider = 'Novu (In-App/Infra)' | 'OneSignal (Push)' | 'Twilio (SMS)' | 'Resend (Email)';
 export type PaymentProvider = 'PayStack' | 'Stripe' | 'LemonSqueezy' | 'Paddle' | 'PayPal';
+export type StateManagement = 'React Query' | 'Redux Toolkit' | 'Zustand' | 'Context API' | 'None';
 
 export interface Source {
   id: string;
@@ -26,6 +27,7 @@ export interface PromptConfig {
   tooling: Tooling[];
   providers: NotificationProvider[];
   payments: PaymentProvider[];
+  stateManagement: StateManagement;
   customContext?: string;
   sources: Source[];
   selectedBlueprints?: SelectedBlueprint[];
@@ -40,6 +42,7 @@ export interface Project {
   backend: string | null;
   notifications: string[] | null;
   payments: string | null;
+  stateManagement: string | null;
   rawPrompt: string | null;
   blueprintConfig: any;
   createdAt: string;

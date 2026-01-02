@@ -13,6 +13,7 @@ const mapProject = (p: any): Project => ({
   backend: p.backend,
   notifications: p.notifications,
   payments: p.payments,
+  stateManagement: p.state_management,
   rawPrompt: p.raw_prompt,
   blueprintConfig: p.blueprint_config,
   createdAt: p.created_at,
@@ -245,6 +246,7 @@ export function useGenerateSpec() {
         tooling: [], // Currently not stored explicitly in snake_case mapping but can be extracted if needed
         providers: (mappedProject.notifications as any) || [],
         payments: [mappedProject.payments as any],
+        stateManagement: mappedProject.stateManagement as any,
         sources: mappedSources,
         selectedBlueprints: mappedProject.blueprintConfig?.selectedBlueprints || [],
         customContext: mappedProject.rawPrompt || ""
