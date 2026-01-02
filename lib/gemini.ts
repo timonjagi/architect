@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PromptConfig, OptimizationResult } from "./types";
-import { config } from "node:process";
+// import { config } from 'dotenv';
+// config({ path: '.env.local' }); // or .env.local
+
 /**
  * Transforms a developer requirement into a high-fidelity implementation specification.
  */
@@ -47,7 +49,7 @@ export const optimizePrompt = async (
       "directoryStructure": "ASCII tree",
       "implementationPlan": [{ "id", "title", "description", "details", "testStrategy", "priority", "files_involved", "dependencies", "subtasks" }],
       "architectureNotes": "Boundaries/constraints",
-      "fullMarkdownSpec": "Combined markdown doc"
+      "fullMarkdownSpec": "A complete, single-file Markdown representation of the entire project specification, including kickoff, plan, and architecture."
     }
   `;
 

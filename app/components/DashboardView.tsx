@@ -15,6 +15,8 @@ import { useProjects, useProject, useCreateProject, useUpdateProject, useProject
 import { createClient } from '../../lib/supabase/client';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
+import JSZip from 'jszip';
+import ReactMarkdown from 'react-markdown';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 // ... (rest of constants stay same)
@@ -109,7 +111,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'architecture' | 'files'>('tasks');
+  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -122,6 +124,14 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [projectNameInput, setProjectNameInput] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportSelection, setExportSelection] = useState({
+    implementationPlan: true,
+    architectureNotes: true,
+    directoryStructure: true,
+    fullSpec: true
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -172,7 +182,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (project) {
       setRawPrompt(project.rawPrompt || '');
       setProjectNameInput(project.name || '');
-      setActiveBlueprints(project.blueprintConfig?.selectedBlueprints || []);
+      if (project.blueprintConfig && project.blueprintConfig?.selectedBlueprints) {
+        setActiveBlueprints(project.blueprintConfig.selectedBlueprints);
+      }
       setConfig({
         framework: project.framework as Framework || 'Next.js',
         styling: project.styling as Styling || 'Shadcn/UI',
@@ -188,19 +200,53 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   // Sync latest spec with result
   useEffect(() => {
     if (specs && specs.length > 0) {
-      console.log(specs);
-      const latestSpec = specs[0] as ProjectSpec;
+      const selectedSpec = activeVersionId
+        ? specs.find((s: ProjectSpec) => s.id === activeVersionId)
+        : specs[0];
+
+      const targetSpec = selectedSpec || specs[0] as ProjectSpec;
+
+      if (!activeVersionId && specs[0]) {
+        setActiveVersionId(specs[0].id);
+      }
+
       setResult({
-        coldStartGuide: latestSpec.coldStartGuide,
-        implementationPlan: Array.isArray(latestSpec.implementationPlan) ? latestSpec.implementationPlan : (latestSpec.implementationPlan as any)?.tasks || latestSpec.tasks || [],
-        architectureNotes: (latestSpec as any).architectureNotes || "",
-        directoryStructure: typeof latestSpec.directoryStructure === 'string' ? latestSpec.directoryStructure : JSON.stringify(latestSpec.directoryStructure, null, 2),
-        fullMarkdownSpec: latestSpec.coldStartGuide // Placeholder
+        coldStartGuide: targetSpec.coldStartGuide,
+        implementationPlan: targetSpec.tasks || [],
+        architectureNotes: targetSpec.architectureNotes || "",
+        directoryStructure: targetSpec.directoryStructure || "",
+        fullMarkdownSpec: targetSpec.fullMarkdownSpec || targetSpec.coldStartGuide
       });
     } else {
       setResult(null);
+      setActiveVersionId(null);
     }
-  }, [specs]);
+  }, [specs, activeVersionId]);
+
+  const handleExport = async () => {
+    if (!result || !project) return;
+    const zip = new JSZip();
+    const folderName = `${project.name.replace(/\s+/g, '-').toLowerCase()}-v${specs?.find((s: any) => s.id === activeVersionId)?.version || 'latest'}`;
+    const folder = zip.folder(folderName);
+
+    if (folder) {
+      if (exportSelection.implementationPlan) folder.file("implementation-plan.md", JSON.stringify(result.implementationPlan, null, 2));
+      if (exportSelection.architectureNotes) folder.file("architecture-notes.md", result.architectureNotes);
+      if (exportSelection.directoryStructure) folder.file("directory-structure.md", result.directoryStructure);
+      if (exportSelection.fullSpec) folder.file("full-spec.md", result.fullMarkdownSpec);
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${folderName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setIsExportModalOpen(false);
+    }
+  };
 
   // Auto-save logic
   useEffect(() => {
@@ -330,8 +376,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleOptimize = async () => {
     if (!selectedProjectId) {
-      console.log("No project selected");
-      console.log(selectedProjectId);
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
@@ -502,12 +546,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             </button>
                           </div>
                         )}
-                        {activeBlueprints.map(ab => (
-                          <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
-                            {ab.name}
-                            <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
-                          </div>
-                        ))}
+
                       </div>
                     )}
                   </div>
@@ -538,6 +577,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       </div>
                     )}
                   </div>
+
+                  {activeBlueprints.map(ab => (
+                    <div key={ab.blueprintId} className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md text-[9px] font-black text-slate-200 group uppercase tracking-widest hover:border-slate-700 transition-colors">
+                      {ab.name}
+                      <button onClick={() => removeActiveBlueprint(ab.blueprintId)} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
                 </section>
 
                 <section className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-sm">
@@ -644,6 +690,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     placeholder="Define user stories, business rules, or specific edge cases..."
                     className="w-full h-32 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs leading-relaxed mb-6 focus:border-slate-500 transition-all outline-none resize-none placeholder:text-slate-700"
                   />
+
+
                   <button
                     onClick={handleOptimize}
                     disabled={generateSpec.isPending || (!selectedProjectId && !rawPrompt.trim() && (!sourcesData || sourcesData.length === 0))}
@@ -670,14 +718,32 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 ) : (
                   <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
-                      <div className="flex gap-2">
-                        {['tasks', 'architecture', 'files'].map(tab => (
+                      <div className="flex gap-2 items-center">
+                        {specs && specs.length > 0 && (
+                          <div className="flex items-center gap-2 mr-2">
+                            <select
+                              value={activeVersionId || ''}
+                              onChange={(e) => setActiveVersionId(e.target.value)}
+                              className="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded px-2 py-1.5 focus:outline-none focus:border-slate-500"
+                            >
+                              {specs.map((s: any) => (
+                                <option key={s.id} value={s.id}>v{s.version}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {['full-spec', 'tasks', 'architecture', 'file structure'].map(tab => (
                           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
                         ))}
                       </div>
-                      <button onClick={() => { navigator.clipboard.writeText(result?.fullMarkdownSpec || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest">
-                        {copied ? 'Copied' : 'Copy Spec'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { navigator.clipboard.writeText(result?.fullMarkdownSpec || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">
+                          {copied ? 'Copied' : 'Copy Spec'}
+                        </button>
+                        <button onClick={() => setIsExportModalOpen(true)} className="px-4 py-2 rounded-md bg-slate-100 border border-slate-200 text-slate-950 text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-2">
+                          <Save className="w-3 h-3" /> Export
+                        </button>
+                      </div>
                     </div>
                     <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                       {activeTab === 'tasks' && (
@@ -686,187 +752,245 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <div className="p-3 bg-white rounded-md text-slate-950 shrink-0"><PlayCircle className="w-5 h-5" /></div>
                             <div className="flex-1 min-w-0">
                               <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Architectural Kickoff</h4>
-                              <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">{result?.coldStartGuide}</div>
+                              <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
+                                <ReactMarkdown>{result?.coldStartGuide || ''}</ReactMarkdown>
+                              </div>
                             </div>
                           </div>
                           <div className="space-y-4">{result?.implementationPlan.map((task) => (<TaskCard key={task.id} task={task} />))}</div>
                         </div>
                       )}
+
+                      {activeTab === 'full-spec' && (
+                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed font-medium animate-in fade-in prose prose-invert prose-xs max-w-none">
+                          <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
+                        </div>
+                      )}
+
                       {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}
-                      {activeTab === 'files' && <pre className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-200 overflow-x-auto mono animate-in fade-in">{result?.directoryStructure}</pre>}
+
+                      {activeTab === 'file structure' && <pre className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-200 overflow-x-auto mono animate-in fade-in">{result?.directoryStructure}</pre>}
                     </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        </main >
 
-      {/* Modals */}
-      {isStackModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">Architect Stack Config</h3>
-              <button onClick={() => setIsStackModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
+        {/* Modals */}
+        {
+          isStackModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+              <div className="relative bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Architect Stack Config</h3>
+                  <button onClick={() => setIsStackModalOpen(false)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+                </div>
 
-            {[
-              { label: 'Framework', options: FRAMEWORKS, key: 'framework', type: 'single' },
-              { label: 'Infrastructure', options: BACKENDS, key: 'backend', type: 'single' },
-              { label: 'Styling', options: STYLING, key: 'styling', type: 'single' },
-              { label: 'Notifications', options: NOTIFICATIONS, key: 'providers', type: 'multi' },
-              { label: 'Payments', options: PAYMENTS, key: 'payments', type: 'multi' }
-            ].map(group => (
-              <div key={group.label} className="space-y-4">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">{group.label}</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {group.options.map(opt => {
-                    const isSelected = group.type === 'single'
-                      ? config[group.key as keyof typeof config] === opt
-                      : (config[group.key as keyof typeof config] as any[]).includes(opt);
+                {[
+                  { label: 'Framework', options: FRAMEWORKS, key: 'framework', type: 'single' },
+                  { label: 'Infrastructure', options: BACKENDS, key: 'backend', type: 'single' },
+                  { label: 'Styling', options: STYLING, key: 'styling', type: 'single' },
+                  { label: 'Notifications', options: NOTIFICATIONS, key: 'providers', type: 'multi' },
+                  { label: 'Payments', options: PAYMENTS, key: 'payments', type: 'multi' }
+                ].map(group => (
+                  <div key={group.label} className="space-y-4">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">{group.label}</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {group.options.map(opt => {
+                        const isSelected = group.type === 'single'
+                          ? config[group.key as keyof typeof config] === opt
+                          : (config[group.key as keyof typeof config] as any[]).includes(opt);
 
-                    return (
-                      <button
-                        key={opt as string}
-                        onClick={() => {
-                          if (group.type === 'single') {
-                            setConfig({ ...config, [group.key]: opt });
-                          } else {
-                            toggleStackItem(group.key as any, opt);
-                          }
-                        }}
-                        className={`px-3 py-2.5 rounded-md border text-[10px] font-bold transition-all ${isSelected ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
-                      >
-                        {opt as string}
-                      </button>
-                    );
-                  })}
+                        return (
+                          <button
+                            key={opt as string}
+                            onClick={() => {
+                              if (group.type === 'single') {
+                                setConfig({ ...config, [group.key]: opt });
+                              } else {
+                                toggleStackItem(group.key as any, opt);
+                              }
+                            }}
+                            className={`px-3 py-2.5 rounded-md border text-[10px] font-bold transition-all ${isSelected ? 'bg-white border-white text-slate-950 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
+                          >
+                            {opt as string}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-4">
+                  <button onClick={() => setIsStackModalOpen(false)} className="px-8 py-3 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-slate-200 transition-colors">Confirm</button>
                 </div>
               </div>
-            ))}
-            <div className="flex justify-end pt-4">
-              <button onClick={() => setIsStackModalOpen(false)} className="px-8 py-3 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-slate-200 transition-colors">Confirm</button>
             </div>
-          </div>
-        </div>
-      )}
+          )
+        }
 
-      {isFilterModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-lg p-8 space-y-6 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <Filter className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Architectural Categories</h3>
+        {
+          isFilterModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-lg p-8 space-y-6 shadow-2xl relative">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <Filter className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Architectural Categories</h3>
+                  </div>
+                  <button onClick={() => setIsFilterModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }}
+                      className={`flex items-center gap-4 px-5 py-4 rounded-xl text-[10px] font-black uppercase border transition-all ${activeCategory === cat.id ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-2 ring-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}`}
+                    >
+                      <span className={`${activeCategory === cat.id ? 'text-white' : 'text-slate-500'}`}>{cat.icon}</span>
+                      {cat.label}
+                      {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+                <div className="pt-4 border-t border-slate-900">
+                  <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest italic text-center">Select a category to refine available modules</p>
+                </div>
               </div>
-              <button onClick={() => setIsFilterModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {CATEGORIES.map(cat => (
+          )
+        }
+
+        {
+          selectedBlueprintForModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden">
+                <div className="px-8 py-8 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-5">
+                    <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">{selectedBlueprintForModal.icon}</div>
+                    <div>
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight">{selectedBlueprintForModal.name}</h3>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Select Sub-Modules</p>
+                    </div>
+                  </div>
+                  <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="text-slate-500 hover:text-white"><X className="w-6 h-6" /></button>
+                </div>
+                <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                  {selectedBlueprintForModal.subcategories.map(sub => (
+                    <label key={sub.id} className={`flex items-start gap-6 p-5 rounded-lg border transition-all cursor-pointer group ${selectedSubs.includes(sub.id) ? 'bg-white border-white text-slate-950' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
+                      <input type="checkbox" className="hidden" checked={selectedSubs.includes(sub.id)} onChange={() => setSelectedSubs(prev => prev.includes(sub.id) ? prev.filter(x => x !== sub.id) : [...prev, sub.id])} />
+                      <div className={`w-5 h-5 rounded border-2 shrink-0 ${selectedSubs.includes(sub.id) ? 'bg-slate-950 border-slate-950' : 'border-slate-700'} flex items-center justify-center`}>
+                        {selectedSubs.includes(sub.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${selectedSubs.includes(sub.id) ? 'text-slate-950' : 'text-slate-200'}`}>{sub.label}</div>
+                        <div className={`text-[11px] font-medium leading-relaxed ${selectedSubs.includes(sub.id) ? 'text-slate-600' : 'text-slate-500'}`}>{sub.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <div className="p-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4">
+                  <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase transition-colors hover:bg-slate-900">Cancel</button>
+                  <button onClick={() => {
+                    const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
+                    const finalLabels = labels.length > 0 ? [...labels] : [];
+                    setActiveBlueprints(prev => {
+                      const filtered = prev.filter(p => p.blueprintId !== selectedBlueprintForModal.id);
+                      return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, prompt: selectedBlueprintForModal.prompt, selectedSubLabels: finalLabels }];
+                    });
+                    setSelectedBlueprintForModal(null);
+                    setSelectedSubs([]);
+                  }} className="flex-[2] py-3 px-6 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase shadow-md transition-all active:scale-95 hover:bg-slate-200">
+                    {selectedSubs.length > 0 ? `Add ${selectedSubs.length} Modules` : 'Add Core Context'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {
+          isPasteModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-6 shadow-2xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Paste Project Source</h3>
+                  <button onClick={() => setIsPasteModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Document Title</label>
+                    <input
+                      value={pastedName}
+                      onChange={(e) => setPastedName(e.target.value)}
+                      placeholder="e.g. system_architecture.md"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-md px-4 py-3 text-xs outline-none text-white font-medium focus:border-slate-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Content</label>
+                    <textarea
+                      value={pastedContent}
+                      onChange={(e) => setPastedContent(e.target.value)}
+                      placeholder="Paste documentation, requirements, or code here..."
+                      className="w-full h-48 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs text-white outline-none resize-none font-mono focus:border-slate-500 transition-all custom-scrollbar"
+                    />
+                  </div>
+                </div>
                 <button
-                  key={cat.id}
-                  onClick={() => { setActiveCategory(cat.id); setIsFilterModalOpen(false); }}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-xl text-[10px] font-black uppercase border transition-all ${activeCategory === cat.id ? 'bg-indigo-500 border-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-2 ring-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}`}
+                  onClick={handlePasteSubmit}
+                  disabled={addSource.isPending || !pastedName.trim() || !pastedContent.trim()}
+                  className="w-full py-4 bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-md hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 transition-all flex items-center justify-center gap-2"
                 >
-                  <span className={`${activeCategory === cat.id ? 'text-white' : 'text-slate-500'}`}>{cat.icon}</span>
-                  {cat.label}
-                  {activeCategory === cat.id && <Check className="w-4 h-4 ml-auto" />}
+                  {addSource.isPending ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {addSource.isPending ? 'Saving...' : 'Add Source'}
                 </button>
-              ))}
+              </div>
             </div>
-            <div className="pt-4 border-t border-slate-900">
-              <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest italic text-center">Select a category to refine available modules</p>
-            </div>
-          </div>
-        </div>
-      )}
+          )
+        }
 
-      {selectedBlueprintForModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden">
-            <div className="px-8 py-8 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-5">
-                <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">{selectedBlueprintForModal.icon}</div>
-                <div>
-                  <h3 className="text-lg font-black text-white uppercase tracking-tight">{selectedBlueprintForModal.name}</h3>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Select Sub-Modules</p>
+        {
+          isExportModalOpen && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><Save className="w-4 h-4" /> Export Spec</h3>
+                  <button onClick={() => setIsExportModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <p className="text-xs text-slate-400 mb-4">Select the artifacts you want to include in the ZIP bundle.</p>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors group">
+                      <input type="checkbox" checked={exportSelection.implementationPlan} onChange={(e) => setExportSelection(prev => ({ ...prev, implementationPlan: e.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-0 focus:ring-offset-0" />
+                      <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Implementation Plan (JSON/MD)</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors group">
+                      <input type="checkbox" checked={exportSelection.architectureNotes} onChange={(e) => setExportSelection(prev => ({ ...prev, architectureNotes: e.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-0 focus:ring-offset-0" />
+                      <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Architecture Notes</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors group">
+                      <input type="checkbox" checked={exportSelection.directoryStructure} onChange={(e) => setExportSelection(prev => ({ ...prev, directoryStructure: e.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-0 focus:ring-offset-0" />
+                      <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Directory Structure</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors group">
+                      <input type="checkbox" checked={exportSelection.fullSpec} onChange={(e) => setExportSelection(prev => ({ ...prev, fullSpec: e.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-indigo-500 focus:ring-0 focus:ring-offset-0" />
+                      <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">Full Specification (MD)</span>
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button onClick={() => setIsExportModalOpen(false)} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase transition-colors hover:bg-slate-900">Cancel</button>
+                    <button onClick={handleExport} className="flex-1 py-3 px-6 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase transition-colors hover:bg-slate-200 shadow-lg">Download ZIP</button>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="text-slate-500 hover:text-white"><X className="w-6 h-6" /></button>
             </div>
-            <div className="p-8 space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
-              {selectedBlueprintForModal.subcategories.map(sub => (
-                <label key={sub.id} className={`flex items-start gap-6 p-5 rounded-lg border transition-all cursor-pointer group ${selectedSubs.includes(sub.id) ? 'bg-white border-white text-slate-950' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
-                  <input type="checkbox" className="hidden" checked={selectedSubs.includes(sub.id)} onChange={() => setSelectedSubs(prev => prev.includes(sub.id) ? prev.filter(x => x !== sub.id) : [...prev, sub.id])} />
-                  <div className={`w-5 h-5 rounded border-2 shrink-0 ${selectedSubs.includes(sub.id) ? 'bg-slate-950 border-slate-950' : 'border-slate-700'} flex items-center justify-center`}>
-                    {selectedSubs.includes(sub.id) && <Check className="w-3.5 h-3.5 text-white" />}
-                  </div>
-                  <div className="min-w-0">
-                    <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${selectedSubs.includes(sub.id) ? 'text-slate-950' : 'text-slate-200'}`}>{sub.label}</div>
-                    <div className={`text-[11px] font-medium leading-relaxed ${selectedSubs.includes(sub.id) ? 'text-slate-600' : 'text-slate-500'}`}>{sub.description}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <div className="p-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4">
-              <button onClick={() => { setSelectedBlueprintForModal(null); setSelectedSubs([]); }} className="flex-1 py-3 px-6 rounded-md border border-slate-800 text-slate-500 font-bold text-[10px] uppercase transition-colors hover:bg-slate-900">Cancel</button>
-              <button onClick={() => {
-                const labels = selectedBlueprintForModal.subcategories.filter(s => selectedSubs.includes(s.id)).map(s => s.label);
-                const finalLabels = labels.length > 0 ? [...labels] : [];
-                setActiveBlueprints(prev => {
-                  const filtered = prev.filter(p => p.blueprintId !== selectedBlueprintForModal.id);
-                  return [...filtered, { blueprintId: selectedBlueprintForModal.id, name: selectedBlueprintForModal.name, prompt: selectedBlueprintForModal.prompt, selectedSubLabels: finalLabels }];
-                });
-                setSelectedBlueprintForModal(null);
-                setSelectedSubs([]);
-              }} className="flex-[2] py-3 px-6 rounded-md bg-white text-slate-950 font-black text-[10px] uppercase shadow-md transition-all active:scale-95 hover:bg-slate-200">
-                {selectedSubs.length > 0 ? `Add ${selectedSubs.length} Modules` : 'Add Core Context'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isPasteModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-xl p-8 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">Paste Project Source</h3>
-              <button onClick={() => setIsPasteModalOpen(false)} className="text-slate-500 hover:text-white p-2 hover:bg-slate-900 rounded-md transition-colors"><X className="w-6 h-6" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Document Title</label>
-                <input
-                  value={pastedName}
-                  onChange={(e) => setPastedName(e.target.value)}
-                  placeholder="e.g. system_architecture.md"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-md px-4 py-3 text-xs outline-none text-white font-medium focus:border-slate-500 transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Content</label>
-                <textarea
-                  value={pastedContent}
-                  onChange={(e) => setPastedContent(e.target.value)}
-                  placeholder="Paste documentation, requirements, or code here..."
-                  className="w-full h-48 bg-slate-900 border border-slate-800 rounded-md p-4 text-xs text-white outline-none resize-none font-mono focus:border-slate-500 transition-all custom-scrollbar"
-                />
-              </div>
-            </div>
-            <button
-              onClick={handlePasteSubmit}
-              disabled={addSource.isPending || !pastedName.trim() || !pastedContent.trim()}
-              className="w-full py-4 bg-white text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-md hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 transition-all flex items-center justify-center gap-2"
-            >
-              {addSource.isPending ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {addSource.isPending ? 'Saving...' : 'Add Source'}
-            </button>
-          </div>
-        </div>
-      )}
+          )
+        }
+      </div>
     </div>
   );
 };

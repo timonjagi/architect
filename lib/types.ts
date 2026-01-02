@@ -52,6 +52,8 @@ export interface ProjectSpec {
   tasks: TaskItem[];
   implementationPlan: any;
   directoryStructure: any;
+  architectureNotes: string | null;
+  fullMarkdownSpec: string | null;
   createdAt: string;
 }
 

@@ -31,7 +31,9 @@ const mapProjectSpec = (s: any): ProjectSpec => ({
   coldStartGuide: s.cold_start_guide,
   tasks: s.tasks || [],
   implementationPlan: s.implementation_plan || {},
-  directoryStructure: s.directory_structure || {},
+  directoryStructure: s.directory_structure || "",
+  architectureNotes: s.architecture_notes || "",
+  fullMarkdownSpec: s.full_markdown_spec || "",
   createdAt: s.created_at,
 });
 
@@ -199,7 +201,8 @@ export function useProjectSpecs(projectId: string | null) {
       const { data, error } = await supabase
         .from("project_specs")
         .select("*")
-        .eq("project_id", projectId);
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       return (data || []).map(mapProjectSpec);
@@ -250,16 +253,21 @@ export function useGenerateSpec() {
 
       // 3. Generate spec using Gemini SDK client-side
       const result = await optimizePrompt(mappedProject.rawPrompt || "Generate spec", config);
-      console.log(result);
+
+      // Determine version
+      const { data: existingSpecs } = await supabase.from("project_specs").select("version").eq("project_id", projectId);
+      const versionCount = existingSpecs?.length || 0;
+      const nextVersion = `1.0.${versionCount}`;
+
       // 4. Save to project_specs via Supabase
       const { data: newSpec, error: insertError } = await supabase
         .from("project_specs")
         .insert({
           project_id: projectId,
-          version: "1.0.0",
+          version: nextVersion,
           title: mappedProject.name + " Spec",
           cold_start_guide: result.coldStartGuide,
-          directory_structure: { structure: result.directoryStructure },
+          directory_structure: result.directoryStructure,
           implementation_plan: { plan: result.implementationPlan },
           tasks: result.implementationPlan,
           architecture_notes: result.architectureNotes,
