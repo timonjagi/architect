@@ -1,5 +1,5 @@
 {
   "name": "Architect",
-  "description": "A sophisticated tool designed for web developers to transform vague requirements into high-fidelity, structured AI prompts. It focuses on modern frameworks and self-hostable open-source services to ensure scalable and maintainable code generation.",
+  "description": "A sophisticated tool designed for web developers to transform vague requirements into production-ready specifications with architectural patterns. It focuses on modern frameworks and self-hostable open-source services to ensure scalable and maintainable code generation.",
   "requestFramePermissions": []
 }

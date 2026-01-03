@@ -3,7 +3,8 @@ export type Styling = 'Tailwind CSS' | 'Shadcn/UI' | 'Chakra UI' | 'Styled Compo
 export type Backend = 'Supabase' | 'Appwrite' | 'Pocketbase' | 'PostgreSQL' | 'N8N (Workflows)';
 export type Tooling = 'TypeScript' | 'Zod' | 'React Hook Form' | 'Prisma' | 'Drizzle';
 export type NotificationProvider = 'Novu (In-App/Infra)' | 'OneSignal (Push)' | 'Twilio (SMS)' | 'Resend (Email)';
-export type PaymentProvider = 'Stripe' | 'LemonSqueezy' | 'Paddle' | 'PayPal';
+export type PaymentProvider = 'PayStack' | 'Stripe' | 'LemonSqueezy' | 'Paddle' | 'PayPal';
+export type StateManagement = 'React Query' | 'Redux Toolkit' | 'Zustand' | 'Context API' | 'None';
 
 export interface Source {
   id: string;
@@ -15,6 +16,7 @@ export interface Source {
 export interface SelectedBlueprint {
   blueprintId: string;
   name: string;
+  prompt: string;
   selectedSubLabels: string[];
 }
 
@@ -25,9 +27,44 @@ export interface PromptConfig {
   tooling: Tooling[];
   providers: NotificationProvider[];
   payments: PaymentProvider[];
+  stateManagement: StateManagement;
   customContext?: string;
   sources: Source[];
   selectedBlueprints?: SelectedBlueprint[];
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  framework: string | null;
+  styling: string | null;
+  backend: string | null;
+  notifications: string[] | null;
+  payments: string | null;
+  stateManagement: string | null;
+  rawPrompt: string | null;
+  blueprintConfig: any;
+  createdAt: string;
+}
+
+export interface ProjectSpec {
+  id: string;
+  projectId: string;
+  coldStartGuide: string;
+  tasks: TaskItem[];
+  implementationPlan: any;
+  directoryStructure: any;
+  architectureNotes: string | null;
+  fullMarkdownSpec: string | null;
+  createdAt: string;
+  version: string;
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  description: string;
 }
 
 export interface TaskItem {
@@ -39,6 +76,7 @@ export interface TaskItem {
   priority: 'high' | 'medium' | 'low';
   files_involved: string[];
   dependencies: string[];
+  subtasks: SubTask[];
 }
 
 export interface OptimizationResult {

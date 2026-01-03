@@ -1,13 +1,36 @@
 import React from 'react';
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
 
-interface RootLayoutProps {
-  children?: React.ReactNode;
-}
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
-export default function RootLayout({ children }: RootLayoutProps) {
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Architect | AI System Design & Prompt Optimization",
+  description: "A high-fidelity system design and prompt optimization platform for software engineers.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-white/10">
-      {children}
-    </div>
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <Providers>{children}</Providers>
+      </body>
+    </html>
   );
 }

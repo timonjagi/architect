@@ -1,2 +1,2 @@
 
-export * from '../lib/gemini.ts';
+export * from '../lib/gemini';
