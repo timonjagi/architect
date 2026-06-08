@@ -1,27 +1,19 @@
 import { generateObject } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { PromptConfig, OptimizationResult } from './types';
 import { BLUEPRINTS } from './blueprints';
+import { openrouter, DEFAULT_MODEL, truncateSource } from './ai-prompts';
 
-// import { config } from 'dotenv';
-// config({ path: '.env.local' }); // or .env.local
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || "",
-});
-
-// Define the schema using Zod with detailed descriptions
 const architectureSchema = z.object({
-  coldStartGuide: z.string().describe("Comprehensive Markdown guide for project setup. MUST include: 1) Prerequisite tools, 2) Exact 'npm install' commands with ALL required packages (exact names), 3) Environment variable templates (.env.example), 4) Database initialization steps."),
+  coldStartGuide: z.string().describe("Markdown setup guide: prerequisites, install commands, .env template, DB init. Be specific with exact package names."),
 
-  directoryStructure: z.string().describe("ASCII tree representation of the project structure."),
+  directoryStructure: z.string().describe("ASCII tree of project structure."),
 
   implementationPlan: z.array(z.object({
     id: z.string(),
     title: z.string(),
     description: z.string(),
-    details: z.string().describe("Extremely detailed technical instructions. Specify exact file paths, function names to create/edit, specific libraries to use, and logic flow. Do not be vague."),
+    details: z.string().describe("Exact file paths, function signatures, library imports, and logic flow. No ambiguity."),
     testStrategy: z.string().optional().default("Manual verification"),
     priority: z.enum(['high', 'medium', 'low']).optional().default('medium'),
     files_involved: z.array(z.string()).optional().default([]),
@@ -30,67 +22,76 @@ const architectureSchema = z.object({
       id: z.string(),
       title: z.string(),
       description: z.string(),
-      details: z.string().describe("Extremely detailed technical instructions. Specify exact file paths, function names to create/edit, specific libraries to use, and logic flow. Do not be vague.").optional().default(""),
+      details: z.string().optional().default(""),
       testStrategy: z.string().optional().default(""),
       priority: z.enum(['high', 'medium', 'low']).optional().default('medium'),
       dependencies: z.array(z.string()).optional().default([]),
       files_involved: z.array(z.string()).optional().default([]),
     })).optional().default([])
-  })).describe("A detailed, step-by-step implementation roadmap to guide AI coding agents. Each task must be atomic and include all rudimentary details needed for a junior developer to execute it without questions. It should include all files to create/edit, specific libraries to use, and logic flow. Do not be vague. The selected blueprint modules must be incorporated into the implementation plan."),
+  })).describe("Ordered implementation tasks. Each must be atomic: one developer, one PR, one testable unit. Include exact file paths and function names."),
 
-  architectureNotes: z.string().describe("Detailed Markdown documentation of the system architecture. MUST include: 1) High-level system design, 2) Component interaction diagrams (mermaid), 3) Data flow descriptions, 4) Security boundaries, 5) Scalability strategies."),
+  architectureNotes: z.string().describe("System architecture: high-level design, component diagram (mermaid), data flow, security boundaries, scaling strategy."),
 
-  fullMarkdownSpec: z.string().describe("A complete, single-file Markdown representation of the entire project specification, including kickoff, plan, and architecture.")
+  fullMarkdownSpec: z.string().describe("Complete single-file spec combining kickoff, architecture, and implementation plan into a readable document.")
 });
+
+function buildSystemPrompt(config: PromptConfig, sourcesContext: string, blueprintContext: string): string {
+  return `ROLE: Principal Software Architect producing a machine-executable project specification.
+
+OUTPUT RULES:
+- Every file path must be absolute from project root
+- Every function must include signature + return type
+- Every dependency must include exact package name and version range
+- No hand-waving: "set up auth" is wrong; "create lib/supabase/server.ts with createServerClient using cookies()" is right
+- Implementation tasks must be ordered by dependency (no forward references)
+- Each task must be completable in one focused work session
+
+TECH STACK:
+- Framework: ${config.framework}
+- Styling: ${config.styling}
+- Backend: ${config.backend}
+- Tooling: ${config.tooling.join(', ')}
+- Notifications: ${config.providers?.join(', ') || 'None'}
+- Payments: ${config.payments?.join(', ') || 'None'}
+- Custom Context: ${config.customContext || 'None'}
+
+${sourcesContext}
+
+${blueprintContext}
+
+REASONING: Before writing each section, consider: What would a developer need to see to implement this without asking questions? Include that.`;
+}
 
 export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
 ): Promise<OptimizationResult> => {
   if (!(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY)) {
-    console.error("OPENROUTER_API_KEY is missing.");
     throw new Error("OPENROUTER_API_KEY is missing.");
   }
 
   const sourcesContext = config.sources.length > 0
-    ? `PROJECT DOCUMENTS PROVIDED:\n${config.sources.map(s => `--- ${s.name} ---\n${s.content}`).join('\n\n')}`
+    ? `PROJECT DOCUMENTS:\n${config.sources.map(s => truncateSource(s.name, s.content)).join('\n\n')}`
     : '';
 
   const blueprintContext = config.selectedBlueprints?.length
-    ? `SELECTED ARCHITECTURAL MODULES:\n${config.selectedBlueprints.map(b => {
-      const originalBp = BLUEPRINTS.find(bp => bp.id === b.blueprintId);
-      const subDetails = b.selectedSubLabels.map(label => {
-        const sub = originalBp?.subcategories.find(s => s.label === label);
-        return sub ? `  - ${label}: ${sub.description}` : `  - ${label}`;
+    ? `SELECTED MODULES:\n${config.selectedBlueprints.map(b => {
+      const bp = BLUEPRINTS.find(p => p.id === b.blueprintId);
+      const subs = b.selectedSubLabels.map(label => {
+        const sub = bp?.subcategories.find(s => s.label === label);
+        return sub ? `  ${label}: ${sub.description}` : `  ${label}`;
       }).join('\n');
-      return `MODULE: ${b.name}: ${b.prompt}\nSUB-MODULES TO BE INCLUDED:\n${subDetails}`;
-    }).join('\n\n------------------\n\n')}`
-    : 'No specific blueprints selected.';
+      return `${b.name} — ${b.prompt}\n${subs}`;
+    }).join('\n')}`
+    : '';
 
-  const systemInstruction = `
-    You are a Principal Software Architect. Generate a high-fidelity "Architect Specification" (JSON).
-    Break down requirements into atomic tasks with logic, test strategies, and priority.
-
-    CORE CONTEXT:
-    ${sourcesContext}
-
-    TECH STACK:
-    - Framework: ${config.framework}
-    - Styling: ${config.styling}
-    - Backend: ${config.backend}
-    - Tooling: ${config.tooling.join(', ')}
-    - Notifications: ${config.providers?.join(', ') || 'Default'}
-    - Payments: ${config.payments?.join(', ') || 'Default'}
-    - Custom Context: ${config.customContext || 'None'}
-
-    ${blueprintContext}
-  `;
+  const system = buildSystemPrompt(config, sourcesContext, blueprintContext);
 
   try {
     const { object } = await generateObject({
-      model: openrouter(process.env.NEXT_PUBLIC_AI_MODEL || 'google/gemini-3-flash-preview'),
+      model: openrouter(DEFAULT_MODEL),
       schema: architectureSchema,
-      system: systemInstruction + "\n\nIMPORTANT: You must return a valid JSON object matching the schema exactly. Do not wrap the JSON in markdown code blocks.",
+      system,
       prompt: rawPrompt || 'Design the system based on selected modules.',
     });
 

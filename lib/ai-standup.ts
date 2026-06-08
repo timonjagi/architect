@@ -1,20 +1,16 @@
 import { generateObject } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { getProjectTasks, getExecutionSummary } from '@/services/taskService';
 import { db } from '@/lib/db';
 import { taskActivity } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '',
-});
+import { openrouter, DEFAULT_MODEL, formatTaskList, formatActivityLog } from './ai-prompts';
 
 const standupSchema = z.object({
-  yesterday: z.array(z.string()).describe('Tasks completed or progressed yesterday'),
-  today: z.array(z.string()).describe('Recommended tasks to work on today'),
-  blockers: z.array(z.string()).describe('Current blockers preventing progress'),
-  summary: z.string().describe('One-line executive summary of project status'),
+  yesterday: z.array(z.string()).describe('What was completed or progressed in last 24h'),
+  today: z.array(z.string()).describe('Recommended focus for today, ordered by priority'),
+  blockers: z.array(z.string()).describe('Active blockers with context'),
+  summary: z.string().describe('One-line status: N done, N active, N blocked'),
 });
 
 export type DailyStandup = z.infer<typeof standupSchema>;
@@ -46,55 +42,46 @@ export async function aiGenerateStandup(
       .orderBy(desc(taskActivity.createdAt));
   }
 
-  const taskList = tasks
-    .map(
-      (t) =>
-        `[${t.id}] ${t.title} | status=${t.status} | priority=${t.priority}`
-    )
-    .join('\n');
-
-  const activityLog = recentActivity
-    .map(
-      (a) =>
-        `task=${a.taskId} | ${a.eventType} | ${new Date(a.createdAt).toLocaleTimeString()}`
-    )
-    .join('\n');
+  const taskList = formatTaskList(tasks);
+  const activityLog = formatActivityLog(recentActivity);
 
   const blockedTasks = tasks
     .filter((t) => t.status === 'blocked')
-    .map((t) => `${t.title}: ${t.description || 'No details'}`)
+    .map((t) => `- ${t.title}: ${(t.description || 'No details').slice(0, 100)}`)
     .join('\n');
 
-  const prompt = `Generate a daily standup summary for this project.
+  const system = `ROLE: Engineering manager writing a concise daily standup.
 
-PROJECT STATUS:
-- Total: ${summary.total} tasks
-- Completed: ${summary.completed}
-- In Progress: ${summary.inProgress}
-- Blocked: ${summary.blocked}
-- Todo: ${summary.todo}
-- Completion rate: ${summary.completionRate}%
+FORMATTING RULES:
+- yesterday: 1-3 bullet points of what moved forward (task titles + brief outcome)
+- today: 1-3 bullet points of what to focus on (highest leverage work)
+- blockers: only real blockers, not "waiting for review"
+- summary: exactly "N done, N active, N blocked" format
+- No fluff, no pleasantries, no markdown headers
+
+PRIORITIES:
+- yesterday: Report actual completions and status changes, not "worked on X"
+- today: Prefer finishing in_progress tasks over starting new ones
+- blockers: Include what's blocked and brief reason (dependency, technical, scope)
+
+TONE: Direct, factual, skip anything that didn't actually change.`;
+
+  const prompt = `PROJECT: ${summary.total} total | ${summary.completed} done | ${summary.inProgress} active | ${summary.blocked} blocked | ${summary.todo} queued
 
 TASKS:
-${taskList || 'No tasks.'}
+${taskList}
 
 LAST 24H ACTIVITY:
-${activityLog || 'No activity in the last 24 hours.'}
+${activityLog}
 
-BLOCKED TASKS:
-${blockedTasks || 'No blocked tasks.'}
+${blockedTasks ? `BLOCKED:\n${blockedTasks}` : 'No blockers.'}
 
-FORMAT:
-- yesterday: What was accomplished in the last 24 hours (task titles)
-- today: What should be worked on next (prioritize in_progress, then high-priority todo)
-- blockers: Current blockers with brief context
-- summary: One-line status (e.g., "3 tasks done, 2 in progress, 1 blocker")
-
-Return as JSON matching the schema.`;
+Generate standup. Return as JSON.`;
 
   const { object } = await generateObject({
-    model: openrouter(process.env.NEXT_PUBLIC_AI_MODEL || 'google/gemini-3-flash-preview'),
+    model: openrouter(DEFAULT_MODEL),
     schema: standupSchema,
+    system,
     prompt,
   });
 

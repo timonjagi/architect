@@ -1,22 +1,18 @@
 import { generateObject } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { getProjectTasks, getProjectDependencies, getExecutionSummary } from '@/services/taskService';
 import { db } from '@/lib/db';
 import { taskActivity } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '',
-});
+import { openrouter, DEFAULT_MODEL, formatTaskList, formatActivityLog, formatDependencies } from './ai-prompts';
 
 const recommendationSchema = z.object({
-  taskId: z.string().describe('The ID of the task to recommend'),
-  title: z.string().describe('The task title'),
-  rationale: z.string().describe('Why this task should be worked on next'),
-  estimatedMinutes: z.number().describe('Estimated time to complete'),
-  blockers: z.array(z.string()).describe('Current blockers for this task'),
-  prerequisites: z.array(z.string()).describe('What needs to be done before this task'),
+  taskId: z.string().describe('Exact task ID from the list'),
+  title: z.string().describe('Task title'),
+  rationale: z.string().describe('2-3 sentence reasoning: why this task, why now, what unblocks'),
+  estimatedMinutes: z.number().describe('Realistic estimate based on scope'),
+  blockers: z.array(z.string()).describe('Active blockers for this specific task'),
+  prerequisites: z.array(z.string()).describe('Task IDs that must complete first'),
 });
 
 export type TaskRecommendation = z.infer<typeof recommendationSchema>;
@@ -46,56 +42,45 @@ export async function aiRecommendNextTask(
       .limit(20);
   }
 
-  const taskList = tasks
-    .map(
-      (t) =>
-        `[${t.id}] ${t.title} | status=${t.status} | priority=${t.priority} | estimate=${t.estimateMinutes || '?'}min | desc=${(t.description || '').slice(0, 100)}`
-    )
-    .join('\n');
+  const taskList = formatTaskList(tasks);
+  const depList = formatDependencies(dependencies);
+  const activityLog = formatActivityLog(recentActivity);
 
-  const depList = dependencies
-    .map((d) => `[${d.dependsOnTaskId}] blocks [${d.taskId}]`)
-    .join('\n');
+  const system = `ROLE: Senior engineering lead making a tactical decision on what to build next.
 
-  const activityLog = recentActivity
-    .map(
-      (a) =>
-        `${new Date(a.createdAt).toISOString()} | task=${a.taskId} | event=${a.eventType} | ${JSON.stringify(a.payload || {})}`
-    )
-    .join('\n');
+DECISION FRAMEWORK (apply in order):
+1. UNBLOCK: If any in_progress task has resolved blockers → recommend it
+2. COMPLETE: If any in_progress task has no blockers → finish it before starting new work
+3. UNBLOCK OTHERS: If a todo task blocks multiple other tasks → recommend it
+4. HIGH VALUE: If nothing blocked, pick highest-priority task with most downstream impact
+5. QUICK WIN: If priorities are equal, pick smallest estimate to build momentum
 
-  const prompt = `You are a project management AI. Analyze the following project and recommend the single best task to work on next.
+CONSTRAINTS:
+- Never recommend a blocked task
+- Never recommend a task whose prerequisites (dependency graph) aren't met
+- If all tasks are done, recommend the user import more tasks or start a new project
+- Return the exact taskId from the provided list
 
-CURRENT STATE:
-- Total tasks: ${summary.total}
-- Completed: ${summary.completed}
-- In Progress: ${summary.inProgress}
-- Blocked: ${summary.blocked}
-- Todo: ${summary.todo}
-- Completion rate: ${summary.completionRate}%
+REASONING: Show your work. Explain which rule applied and why.`;
+
+  const prompt = `PROJECT STATE:
+Total: ${summary.total} | Done: ${summary.completed} | Active: ${summary.inProgress} | Blocked: ${summary.blocked} | Queued: ${summary.todo} | Rate: ${summary.completionRate}%
 
 TASKS:
-${taskList || 'No tasks yet.'}
+${taskList}
 
-DEPENDENCIES:
-${depList || 'No dependencies.'}
+DEPENDENCY GRAPH:
+${depList}
 
-RECENT ACTIVITY (last 48h):
-${activityLog || 'No recent activity.'}
+RECENT ACTIVITY (48h):
+${activityLog}
 
-RULES:
-1. If there are in_progress tasks, prioritize completing them first
-2. If all in_progress are blocked, recommend the highest-priority unblocked todo task
-3. Respect dependency order — don't recommend a task whose prerequisites aren't done
-4. Consider priority (p0 > p1 > p2 > p3)
-5. If no tasks exist, explain that the project needs tasks imported first
-6. Pick the taskId from the list above exactly as written (including the [uuid] prefix)
-
-Return your recommendation as JSON matching the schema.`;
+Apply the decision framework. Return your recommendation as JSON.`;
 
   const { object } = await generateObject({
-    model: openrouter(process.env.NEXT_PUBLIC_AI_MODEL || 'google/gemini-3-flash-preview'),
+    model: openrouter(DEFAULT_MODEL),
     schema: recommendationSchema,
+    system,
     prompt,
   });
 
