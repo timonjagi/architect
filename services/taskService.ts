@@ -5,6 +5,7 @@ import {
   taskBlockers,
   taskActivity,
   projectSpecs,
+  executionSnapshots,
 } from '@/lib/db/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { createHash } from 'crypto';
@@ -377,4 +378,114 @@ export async function removeDependency(
     .where(eq(taskDependencies.id, dependencyId))
     .returning();
   return result.length > 0;
+}
+
+export interface WeeklyReview {
+  period: { from: Date; to: Date };
+  activity: {
+    created: number;
+    completed: number;
+    blocked: number;
+    unblocked: number;
+    total: number;
+  };
+  tasks: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    blocked: number;
+    todo: number;
+    completionRate: number;
+  };
+  velocity: number[];
+  highlights: string[];
+}
+
+export async function getWeeklyReview(
+  projectId: string,
+  weeksBack: number = 0
+): Promise<WeeklyReview> {
+  const now = new Date();
+  const to = new Date(now);
+  to.setDate(to.getDate() - weeksBack * 7);
+  const from = new Date(to);
+  from.setDate(from.getDate() - 7);
+
+  const projectTaskIds = (
+    await db
+      .select({ id: projectTasks.id })
+      .from(projectTasks)
+      .where(eq(projectTasks.projectId, projectId))
+  ).map((t) => t.id);
+
+  let activityRows: any[] = [];
+  if (projectTaskIds.length > 0) {
+    activityRows = await db
+      .select()
+      .from(taskActivity)
+      .where(
+        and(
+          inArray(taskActivity.taskId, projectTaskIds),
+          sql`${taskActivity.createdAt} >= ${from}`,
+          sql`${taskActivity.createdAt} <= ${to}`
+        )
+      );
+  }
+
+  const created = activityRows.filter((a) => a.eventType === 'created').length;
+  const completed = activityRows.filter((a) => a.eventType === 'status_changed' && a.payload?.newStatus === 'done').length;
+  const blocked = activityRows.filter((a) => a.eventType === 'blocked').length;
+  const unblocked = activityRows.filter((a) => a.eventType === 'unblocked').length;
+
+  const allTasks = projectTaskIds.length > 0
+    ? await db
+        .select()
+        .from(projectTasks)
+        .where(eq(projectTasks.projectId, projectId))
+    : [];
+
+  const total = allTasks.length;
+  const doneCount = allTasks.filter((t) => t.status === 'done').length;
+  const inProgressCount = allTasks.filter((t) => t.status === 'in_progress').length;
+  const blockedCount = allTasks.filter((t) => t.status === 'blocked').length;
+  const todoCount = allTasks.filter((t) => t.status === 'todo').length;
+
+  const snapshots = await db
+    .select()
+    .from(executionSnapshots)
+    .where(
+      and(
+        eq(executionSnapshots.projectId, projectId),
+        sql`${executionSnapshots.snapshotDate} >= ${from}`,
+        sql`${executionSnapshots.snapshotDate} <= ${to}`
+      )
+    )
+    .orderBy(executionSnapshots.snapshotDate);
+
+  const velocity = snapshots
+    .map((s) => s.velocity ?? 0)
+    .filter((v) => v > 0);
+
+  const highlights: string[] = [];
+  if (completed > 0) highlights.push(`${completed} task${completed > 1 ? 's' : ''} completed`);
+  if (blocked > 0) highlights.push(`${blocked} task${blocked > 1 ? 's' : ''} blocked`);
+  if (unblocked > 0) highlights.push(`${unblocked} blocker${unblocked > 1 ? 's' : ''} resolved`);
+  if (created > 0) highlights.push(`${created} new task${created > 1 ? 's' : ''} added`);
+  if (total > 0 && doneCount === total) highlights.push('All tasks completed!');
+  if (blockedCount === 0 && total > 0) highlights.push('No blockers — full velocity');
+
+  return {
+    period: { from, to },
+    activity: { created, completed, blocked, unblocked, total: activityRows.length },
+    tasks: {
+      total,
+      completed: doneCount,
+      inProgress: inProgressCount,
+      blocked: blockedCount,
+      todo: todoCount,
+      completionRate: total > 0 ? Math.round((doneCount / total) * 100) : 0,
+    },
+    velocity,
+    highlights,
+  };
 }

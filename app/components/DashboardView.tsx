@@ -20,6 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import { ExecutionBoard } from './ExecutionBoard';
 import { FocusView } from './FocusView';
 import { DependencyGraph } from './DependencyGraph';
+import { WeeklyReview } from './WeeklyReview';
 import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
@@ -116,7 +117,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'architecture' | 'file structure'>('full-spec');
+  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'review' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -296,6 +297,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     return filteredBlueprints.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredBlueprints, currentPage]);
 
+  const TEXT_FILE_TYPES = [
+    'text/', 'application/json', 'application/javascript',
+    'application/typescript', 'application/xml', 'application/yaml',
+  ];
+
+  const isTextFile = (file: File) => {
+    if (TEXT_FILE_TYPES.some(t => file.type.startsWith(t))) return true;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ['md', 'txt', 'ts', 'tsx', 'js', 'jsx', 'json', 'css', 'html', 'yaml', 'yml', 'sql', 'py', 'rb', 'go', 'rs', 'java', 'sh', 'env', 'gitignore', 'toml', 'csv', 'xml'].includes(ext || '');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -313,6 +325,16 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
 
     Array.from(files).forEach((file: File) => {
+      if (!isTextFile(file)) {
+        toast.error(`${file.name}: Unsupported file type. Only text files are supported (md, txt, ts, js, json, etc.)`);
+        return;
+      }
+
+      if (file.size > 500 * 1024) {
+        toast.error(`${file.name}: File too large. Maximum size is 500KB.`);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (ev) => {
         addSource.mutate({
@@ -320,7 +342,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           source: {
             name: file.name,
             content: ev.target?.result as string,
-            type: file.type
+            type: file.type || file.name.split('.').pop() || 'text/plain'
           }
         }, {
           onError: (err: any) => {
@@ -705,7 +727,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         Upload
                       </button>
                     </div>
-                    <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                    <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} accept=".md,.txt,.ts,.tsx,.js,.jsx,.json,.css,.html,.yaml,.yml,.sql,.py,.rb,.go,.rs,.java,.sh,.env,.toml,.csv,.xml" className="hidden" />
                   </div>
 
                   {sourcesLoading ? (
@@ -722,7 +744,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   ) : !sourcesData || sourcesData.length === 0 ? (
                     <div className="border-2 border-dashed border-slate-900 rounded-lg p-6 text-center">
                       <FileUp className="w-6 h-6 text-slate-800 mx-auto mb-3" />
-                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Optional: Upload specs, DB schemas, or wireframes</p>
+                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Upload schemas, PRDs, or code context</p>
+                      <p className="text-[8px] text-slate-700 mt-1">.md .txt .ts .js .json .sql .py and more</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -789,7 +812,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex gap-2 items-center">
 
-                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'architecture', 'file structure'].map(tab => (
+                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'review', 'architecture', 'file structure'].map(tab => (
                           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
                         ))}
                       </div>
@@ -847,6 +870,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                       {activeTab === 'dependencies' && selectedProjectId && (
                         <DependencyGraph projectId={selectedProjectId} />
+                      )}
+
+                      {activeTab === 'review' && selectedProjectId && (
+                        <WeeklyReview projectId={selectedProjectId} />
                       )}
 
                       {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}
