@@ -1,14 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request)
-
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
-    return response
+    return NextResponse.next()
   }
 
+  const { updateSession } = await import('@/lib/supabase/middleware')
   const { createClient } = await import('@/lib/supabase/server')
+
+  const response = await updateSession(request)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
