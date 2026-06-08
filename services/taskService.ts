@@ -489,3 +489,64 @@ export async function getWeeklyReview(
     highlights,
   };
 }
+
+export async function captureSnapshot(
+  projectId: string
+): Promise<void> {
+  const allTasks = await db
+    .select()
+    .from(projectTasks)
+    .where(eq(projectTasks.projectId, projectId));
+
+  const total = allTasks.length;
+  const completedTasks = allTasks.filter((t) => t.status === 'done').length;
+  const blockedCount = allTasks.filter((t) => t.status === 'blocked').length;
+
+  const lastWeek = new Date();
+  lastWeek.setDate(lastWeek.getDate() - 7);
+
+  const recentCompletions = allTasks.filter(
+    (t) =>
+      t.status === 'done' &&
+      new Date(t.updatedAt) >= lastWeek
+  ).length;
+
+  const prevSnapshots = await db
+    .select()
+    .from(executionSnapshots)
+    .where(eq(executionSnapshots.projectId, projectId))
+    .orderBy(desc(executionSnapshots.snapshotDate))
+    .limit(4);
+
+  let predictabilityScore: number | null = null;
+  if (prevSnapshots.length >= 2) {
+    const recentVelocity = prevSnapshots.map((s) => s.velocity ?? 0);
+    const avg = recentVelocity.reduce((a, b) => a + b, 0) / recentVelocity.length;
+    const variance =
+      recentVelocity.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) /
+      recentVelocity.length;
+    const stdDev = Math.sqrt(variance);
+    predictabilityScore = Math.round(Math.max(0, 100 - stdDev * 10));
+  }
+
+  await db.insert(executionSnapshots).values({
+    projectId,
+    velocity: recentCompletions,
+    blockedCount,
+    totalTasks: total,
+    completedTasks,
+    predictabilityScore,
+  });
+}
+
+export async function getSnapshots(
+  projectId: string,
+  limit: number = 12
+) {
+  return db
+    .select()
+    .from(executionSnapshots)
+    .where(eq(executionSnapshots.projectId, projectId))
+    .orderBy(desc(executionSnapshots.snapshotDate))
+    .limit(limit);
+}
