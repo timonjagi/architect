@@ -550,3 +550,120 @@ export async function getSnapshots(
     .orderBy(desc(executionSnapshots.snapshotDate))
     .limit(limit);
 }
+
+export interface AnalyticsData {
+  velocity: { week: string; tasks: number }[];
+  blockedAging: { taskTitle: string; daysBlocked: number; blockerType: string }[];
+  predictability: { week: string; score: number | null }[];
+  summary: {
+    avgVelocity: number;
+    avgBlockedDays: number;
+    currentPredictability: number | null;
+    totalBlocked: number;
+  };
+}
+
+export async function getAnalytics(
+  projectId: string
+): Promise<AnalyticsData> {
+  const snapshots = await getSnapshots(projectId, 12);
+
+  const velocity = snapshots
+    .slice()
+    .reverse()
+    .map((s) => ({
+      week: new Date(s.snapshotDate).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
+      tasks: s.velocity ?? 0,
+    }));
+
+  const predictability = snapshots
+    .slice()
+    .reverse()
+    .map((s) => ({
+      week: new Date(s.snapshotDate).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
+      score: s.predictabilityScore,
+    }));
+
+  const blockedTasks = await db
+    .select({
+      id: projectTasks.id,
+      title: projectTasks.title,
+      updatedAt: projectTasks.updatedAt,
+    })
+    .from(projectTasks)
+    .where(
+      and(
+        eq(projectTasks.projectId, projectId),
+        eq(projectTasks.status, 'blocked')
+      )
+    );
+
+  const blockedAging = await Promise.all(
+    blockedTasks.map(async (task) => {
+      const [blocker] = await db
+        .select()
+        .from(taskBlockers)
+        .where(
+          and(
+            eq(taskBlockers.taskId, task.id),
+            sql`${taskBlockers.resolvedAt} IS NULL`
+          )
+        )
+        .limit(1);
+
+      const daysBlocked = blocker
+        ? Math.floor(
+            (Date.now() - new Date(blocker.createdAt).getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        : 0;
+
+      return {
+        taskTitle: task.title,
+        daysBlocked,
+        blockerType: blocker?.type ?? 'unknown',
+      };
+    })
+  );
+
+  const velocityValues = velocity.map((v) => v.tasks);
+  const avgVelocity =
+    velocityValues.length > 0
+      ? Math.round(
+          (velocityValues.reduce((a, b) => a + b, 0) / velocityValues.length) *
+            10
+        ) / 10
+      : 0;
+
+  const avgBlockedDays =
+    blockedAging.length > 0
+      ? Math.round(
+          (blockedAging.reduce((a, b) => a + b.daysBlocked, 0) /
+            blockedAging.length) *
+            10
+        ) / 10
+      : 0;
+
+  const currentPredictability =
+    predictability.length > 0
+      ? predictability[predictability.length - 1].score
+      : null;
+
+  return {
+    velocity,
+    blockedAging,
+    predictability,
+    summary: {
+      avgVelocity,
+      avgBlockedDays,
+      currentPredictability,
+      totalBlocked: blockedAging.length,
+    },
+  };
+}
