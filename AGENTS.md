@@ -37,15 +37,21 @@ app/
 │   ├── dependencies/[dependencyId]/ # Delete dependency
 │   ├── projects/[id]/dependencies/  # List/add dependencies
 │   ├── projects/[id]/execution/     # Summary, today focus
+│   ├── projects/[id]/recommendation/ # AI next-task recommendation
 │   ├── projects/[id]/review/        # Weekly review stats
+│   ├── projects/[id]/standup/       # AI daily standup
 │   ├── projects/[id]/tasks/         # Import, list tasks
-│   └── tasks/[taskId]/              # Update, transition, block, unblock
+│   └── tasks/[taskId]/              # Update, transition, block, unblock, decompose
 ├── components/
+│   ├── AnalyticsBoard.tsx           # Velocity/predictability/blocked charts
 │   ├── DashboardView.tsx            # Main dashboard (config + tabs)
+│   ├── DailyStandup.tsx             # AI daily standup card
 │   ├── DependencyGraph.tsx          # ReactFlow dependency visualization
 │   ├── ExecutionBoard.tsx           # Kanban task board
 │   ├── FocusView.tsx                # Gamified today focus view
 │   ├── LandingView.tsx              # Landing page
+│   ├── NextTaskRecommendation.tsx   # AI next-task suggestion
+│   ├── TaskDecomposer.tsx           # AI task decomposition
 │   ├── Toast.tsx                    # Sonner config
 │   └── WeeklyReview.tsx             # Retro summary with stats
 ├── dashboard/page.tsx               # Dashboard route
@@ -61,7 +67,10 @@ lib/
 │   ├── client.ts                    # Browser client (no-op proxy for build)
 │   └── middleware.ts                # Session refresh
 ├── hooks/useProjects.ts             # React Query hooks for all entities
-├── ai.ts                            # AI integration
+├── ai.ts                            # AI integration (spec generation)
+├── ai-recommendations.ts            # AI next-task recommendation
+├── ai-decompose.ts                  # AI task decomposition
+├── ai-standup.ts                    # AI daily standup generation
 ├── gemini.ts                        # Gemini SDK wrapper
 └── blueprints.ts                    # Module definitions
 services/
@@ -133,9 +142,9 @@ NEXT_PUBLIC_AI_MODEL
 9. **Predictability score** — ✅ Done. Line chart tracking score over snapshots.
 
 ### Phase 4 (Week 7–8)
-10. **AI next-task recommendation** — Endpoint that suggests what to work on next with rationale.
-11. **Task decomposition** — Break large tasks into 30–90 min subtasks.
-12. **Daily standup summary** — AI-generated from activity log.
+10. **AI next-task recommendation** — ✅ Done. Endpoint suggests what to work on next with rationale.
+11. **Task decomposition** — ✅ Done. Break large tasks into 30–90 min subtasks via AI.
+12. **Daily standup summary** — ✅ Done. AI-generated from activity log.
 
 ### P2
 13. **Team features** — Assignees, comments, mentions.
