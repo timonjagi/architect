@@ -251,6 +251,21 @@ interface TaskCardProps {
   onUnblock: () => void;
 }
 
+function BlockerAgeBadge({ blockedSince }: { blockedSince: Date | null }) {
+  if (!blockedSince) return null;
+  const days = Math.floor((Date.now() - new Date(blockedSince).getTime()) / (1000 * 60 * 60 * 24));
+  const color = days < 2
+    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+    : days <= 5
+      ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+      : 'text-red-400 bg-red-500/10 border-red-500/20';
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border ${color}`}>
+      {days}d blocked
+    </span>
+  );
+}
+
 function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock }: TaskCardProps) {
   const [showActions, setShowActions] = useState(false);
 
@@ -286,6 +301,7 @@ function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock
           <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border ${priorityConfig[task.priority].color}`}>
             {priorityConfig[task.priority].label}
           </span>
+          {task.status === 'blocked' && <BlockerAgeBadge blockedSince={task.blockedSince} />}
           <div className="relative">
             <button
               onClick={() => setShowActions(!showActions)}

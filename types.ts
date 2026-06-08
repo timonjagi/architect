@@ -67,6 +67,7 @@ export interface ExecutionTask {
   actualMinutes: number | null;
   assigneeId: string | null;
   dueDate: Date | null;
+  blockedSince: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

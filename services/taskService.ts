@@ -113,9 +113,27 @@ export async function getProjectTasks(
   }
 
   return db
-    .select()
+    .select({
+      id: projectTasks.id,
+      projectId: projectTasks.projectId,
+      specId: projectTasks.specId,
+      epicId: projectTasks.epicId,
+      title: projectTasks.title,
+      description: projectTasks.description,
+      status: projectTasks.status,
+      priority: projectTasks.priority,
+      estimateMinutes: projectTasks.estimateMinutes,
+      actualMinutes: projectTasks.actualMinutes,
+      assigneeId: projectTasks.assigneeId,
+      dueDate: projectTasks.dueDate,
+      blockedSince: sql<Date | null>`MAX(CASE WHEN ${taskBlockers.resolvedAt} IS NULL THEN ${taskBlockers.createdAt} END)`,
+      createdAt: projectTasks.createdAt,
+      updatedAt: projectTasks.updatedAt,
+    })
     .from(projectTasks)
+    .leftJoin(taskBlockers, eq(projectTasks.id, taskBlockers.taskId))
     .where(and(...conditions))
+    .groupBy(projectTasks.id)
     .orderBy(desc(projectTasks.createdAt)) as Promise<ExecutionTask[]>;
 }
 
