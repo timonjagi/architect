@@ -3,12 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { signup } from '../login/actions';
-import { useToast } from '../components/Toast';
+import { toast } from 'sonner';
 import { Code2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -18,7 +17,7 @@ export default function SignupPage() {
     try {
       await signup(formData);
     } catch (err: any) {
-      toast(err.message || 'Signup failed', 'error');
+      toast.error(err.message || 'Signup failed');
       setLoading(false);
     }
   };

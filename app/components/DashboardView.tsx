@@ -18,7 +18,7 @@ import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 import JSZip from 'jszip';
 import ReactMarkdown from 'react-markdown';
 import { ExecutionBoard } from './ExecutionBoard';
-import { useToast } from './Toast';
+import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 // ... (rest of constants stay same)
@@ -101,7 +101,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const addSource = useAddSource();
   const router = useRouter();
   const supabase = createClient();
-  const { toast } = useToast();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -306,7 +305,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         projectId = newProject.id;
         setSelectedProjectId(projectId);
       } catch (err: any) {
-        toast(err.message || 'Failed to create project', 'error');
+        toast.error(err.message || 'Failed to create project');
         return;
       }
     }
@@ -323,10 +322,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           }
         }, {
           onError: (err: any) => {
-            toast(err.message || `Failed to upload ${file.name}`, 'error');
+            toast.error(err.message || `Failed to upload ${file.name}`);
           },
           onSuccess: () => {
-            toast(`${file.name} uploaded successfully`, 'success');
+            toast.success(`${file.name} uploaded successfully`);
           }
         });
       };
@@ -344,7 +343,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         projectId = newProject.id;
         updateProjectQuery(projectId);
       } catch (err: any) {
-        toast(err.message || 'Failed to create project', 'error');
+        toast.error(err.message || 'Failed to create project');
         return;
       }
     }
@@ -361,10 +360,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setPastedName('');
         setPastedContent('');
         setIsPasteModalOpen(false);
-        toast('Context added successfully', 'success');
+        toast.success('Context added successfully');
       },
       onError: (err: any) => {
-        toast(err.message || 'Failed to add context', 'error');
+        toast.error(err.message || 'Failed to add context');
       }
     });
   };
@@ -377,10 +376,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       { projectId: selectedProjectId, sourceId },
       {
         onError: (err: any) => {
-          toast(err.message || 'Failed to delete file', 'error');
+          toast.error(err.message || 'Failed to delete file');
         },
         onSuccess: () => {
-          toast('File removed', 'success');
+          toast.success('File removed');
         }
       }
     );
@@ -410,25 +409,25 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           updateProjectQuery(newProject.id);
           generateSpec.mutate(newProject.id, {
             onError: (err: any) => {
-              toast(err.message || 'Failed to generate spec', 'error');
+              toast.error(err.message || 'Failed to generate spec');
             },
             onSuccess: () => {
-              toast('Spec generated successfully', 'success');
+              toast.success('Spec generated successfully');
             }
           });
         },
         onError: (err: any) => {
-          toast(err.message || 'Failed to create project', 'error');
+          toast.error(err.message || 'Failed to create project');
         }
       });
       return;
     }
     generateSpec.mutate(selectedProjectId, {
       onError: (err: any) => {
-        toast(err.message || 'Failed to generate spec', 'error');
+        toast.error(err.message || 'Failed to generate spec');
       },
       onSuccess: () => {
-        toast('Spec generated successfully', 'success');
+        toast.success('Spec generated successfully');
       }
     });
   };

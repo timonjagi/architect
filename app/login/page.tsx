@@ -3,13 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { login, signInWithOtp } from './actions';
-import { useToast } from '../components/Toast';
+import { toast } from 'sonner';
 import { Code2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const [useMagicLink, setUseMagicLink] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,12 +18,12 @@ export default function LoginPage() {
     try {
       if (useMagicLink) {
         await signInWithOtp(formData);
-        toast('Check your email for the login link!', 'success');
+        toast.success('Check your email for the login link!');
       } else {
         await login(formData);
       }
     } catch (err: any) {
-      toast(err.message || 'Authentication failed', 'error');
+      toast.error(err.message || 'Authentication failed');
       setLoading(false);
     }
   };
