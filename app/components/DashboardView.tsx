@@ -19,6 +19,7 @@ import JSZip from 'jszip';
 import ReactMarkdown from 'react-markdown';
 import { ExecutionBoard } from './ExecutionBoard';
 import { FocusView } from './FocusView';
+import { DependencyGraph } from './DependencyGraph';
 import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
@@ -115,7 +116,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'architecture' | 'file structure'>('full-spec');
+  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -788,7 +789,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex gap-2 items-center">
 
-                        {['full-spec', 'tasks', 'execution', 'focus', 'architecture', 'file structure'].map(tab => (
+                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'architecture', 'file structure'].map(tab => (
                           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
                         ))}
                       </div>
@@ -842,6 +843,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                       {activeTab === 'focus' && selectedProjectId && (
                         <FocusView projectId={selectedProjectId} />
+                      )}
+
+                      {activeTab === 'dependencies' && selectedProjectId && (
+                        <DependencyGraph projectId={selectedProjectId} />
                       )}
 
                       {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}

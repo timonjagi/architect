@@ -14,6 +14,7 @@ import type {
   TaskPriority,
   BlockerType,
   ActivityEvent,
+  TaskDependency,
 } from '@/types';
 
 function generateImportHash(specId: string, projectId: string): string {
@@ -324,4 +325,56 @@ export async function getExecutionSummary(projectId: string) {
     completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
     avgBlockerAgeDays: Math.round(avgBlockerAge * 10) / 10,
   };
+}
+
+export async function getProjectDependencies(
+  projectId: string
+): Promise<TaskDependency[]> {
+  const tasks = await db
+    .select({ id: projectTasks.id })
+    .from(projectTasks)
+    .where(eq(projectTasks.projectId, projectId));
+  const taskIds = tasks.map((t) => t.id);
+
+  if (taskIds.length === 0) return [];
+
+  return db
+    .select()
+    .from(taskDependencies)
+    .where(inArray(taskDependencies.taskId, taskIds)) as Promise<TaskDependency[]>;
+}
+
+export async function addDependency(
+  taskId: string,
+  dependsOnTaskId: string
+): Promise<TaskDependency | null> {
+  const existing = await db
+    .select()
+    .from(taskDependencies)
+    .where(
+      and(
+        eq(taskDependencies.taskId, taskId),
+        eq(taskDependencies.dependsOnTaskId, dependsOnTaskId)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return existing[0] as TaskDependency;
+
+  const [inserted] = await db
+    .insert(taskDependencies)
+    .values({ taskId, dependsOnTaskId })
+    .returning();
+
+  return (inserted as TaskDependency) || null;
+}
+
+export async function removeDependency(
+  dependencyId: string
+): Promise<boolean> {
+  const result = await db
+    .delete(taskDependencies)
+    .where(eq(taskDependencies.id, dependencyId))
+    .returning();
+  return result.length > 0;
 }
