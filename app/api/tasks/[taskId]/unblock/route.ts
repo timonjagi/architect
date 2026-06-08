@@ -3,10 +3,10 @@ import { unblockTask, getTaskById } from '@/services/taskService';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    const taskId = params.taskId;
+    const { taskId } = await params;
 
     const existingTask = await getTaskById(taskId);
     if (!existingTask) {

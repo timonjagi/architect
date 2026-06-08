@@ -3,10 +3,10 @@ import { updateTask, getTaskById } from '@/services/taskService';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    const taskId = params.taskId;
+    const { taskId } = await params;
     const body = await request.json();
 
     const existingTask = await getTaskById(taskId);
