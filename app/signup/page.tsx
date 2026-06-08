@@ -3,22 +3,22 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { signup } from '../login/actions';
-import { Code2, Mail, Lock, ArrowRight, Sparkles, User } from 'lucide-react';
+import { useToast } from '../components/Toast';
+import { Code2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const formData = new FormData(e.currentTarget);
 
     try {
       await signup(formData);
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
+      toast(err.message || 'Signup failed', 'error');
       setLoading(false);
     }
   };
@@ -80,12 +80,6 @@ export default function SignupPage() {
                 </div>
               </div>
             </div>
-
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold text-center">
-                {error}
-              </div>
-            )}
 
             <button
               type="submit"

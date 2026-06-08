@@ -18,6 +18,7 @@ import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 import JSZip from 'jszip';
 import ReactMarkdown from 'react-markdown';
 import { ExecutionBoard } from './ExecutionBoard';
+import { useToast } from './Toast';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 // ... (rest of constants stay same)
@@ -100,6 +101,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const addSource = useAddSource();
   const router = useRouter();
   const supabase = createClient();
+  const { toast } = useToast();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -303,8 +305,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const newProject = await createProject.mutateAsync("New Project");
         projectId = newProject.id;
         setSelectedProjectId(projectId);
-      } catch (err) {
-        console.error("Failed to auto-create project for upload:", err);
+      } catch (err: any) {
+        toast(err.message || 'Failed to create project', 'error');
         return;
       }
     }
@@ -318,6 +320,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             name: file.name,
             content: ev.target?.result as string,
             type: file.type
+          }
+        }, {
+          onError: (err: any) => {
+            toast(err.message || `Failed to upload ${file.name}`, 'error');
+          },
+          onSuccess: () => {
+            toast(`${file.name} uploaded successfully`, 'success');
           }
         });
       };
@@ -334,8 +343,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const newProject = await createProject.mutateAsync("New Project");
         projectId = newProject.id;
         updateProjectQuery(projectId);
-      } catch (err) {
-        console.error("Failed to auto-create project for paste:", err);
+      } catch (err: any) {
+        toast(err.message || 'Failed to create project', 'error');
         return;
       }
     }
@@ -352,6 +361,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setPastedName('');
         setPastedContent('');
         setIsPasteModalOpen(false);
+        toast('Context added successfully', 'success');
+      },
+      onError: (err: any) => {
+        toast(err.message || 'Failed to add context', 'error');
       }
     });
   };
@@ -360,7 +373,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const removeSource = (sourceId: string) => {
     if (!selectedProjectId) return;
-    deleteSource.mutate({ projectId: selectedProjectId, sourceId });
+    deleteSource.mutate(
+      { projectId: selectedProjectId, sourceId },
+      {
+        onError: (err: any) => {
+          toast(err.message || 'Failed to delete file', 'error');
+        },
+        onSuccess: () => {
+          toast('File removed', 'success');
+        }
+      }
+    );
   };
 
   const handleUpdateProjectName = () => {
@@ -385,12 +408,29 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
-          generateSpec.mutate(newProject.id);
+          generateSpec.mutate(newProject.id, {
+            onError: (err: any) => {
+              toast(err.message || 'Failed to generate spec', 'error');
+            },
+            onSuccess: () => {
+              toast('Spec generated successfully', 'success');
+            }
+          });
+        },
+        onError: (err: any) => {
+          toast(err.message || 'Failed to create project', 'error');
         }
       });
       return;
     }
-    generateSpec.mutate(selectedProjectId);
+    generateSpec.mutate(selectedProjectId, {
+      onError: (err: any) => {
+        toast(err.message || 'Failed to generate spec', 'error');
+      },
+      onSuccess: () => {
+        toast('Spec generated successfully', 'success');
+      }
+    });
   };
 
   const removeActiveBlueprint = (blueprintId: string) => {
@@ -676,6 +716,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="py-8 text-center bg-red-500/5 border border-red-500/10 rounded-lg">
                       <AlertCircle className="w-5 h-5 text-red-500 mx-auto mb-2" />
                       <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Failed to load context</p>
+                      <p className="text-[9px] text-slate-500 mt-1">Check your connection and try again</p>
                     </div>
                   ) : !sourcesData || sourcesData.length === 0 ? (
                     <div className="border-2 border-dashed border-slate-900 rounded-lg p-6 text-center">

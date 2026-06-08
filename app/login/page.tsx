@@ -3,28 +3,28 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { login, signInWithOtp } from './actions';
-import { Code2, Mail, Lock, ArrowRight, Sparkles, Github, Chrome } from 'lucide-react';
+import { useToast } from '../components/Toast';
+import { Code2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const [useMagicLink, setUseMagicLink] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const formData = new FormData(e.currentTarget);
 
     try {
       if (useMagicLink) {
         await signInWithOtp(formData);
-        alert('Check your email for the login link!');
+        toast('Check your email for the login link!', 'success');
       } else {
         await login(formData);
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      toast(err.message || 'Authentication failed', 'error');
       setLoading(false);
     }
   };
@@ -91,12 +91,6 @@ export default function LoginPage() {
                 </div>
               )}
             </div>
-
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold text-center">
-                {error}
-              </div>
-            )}
 
             <button
               type="submit"

@@ -16,7 +16,10 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    throw new Error(error.message)
+    const message = error.message.includes('Invalid login credentials')
+      ? 'Invalid email or password. Please try again.'
+      : error.message;
+    throw new Error(message)
   }
 
   revalidatePath('/', 'layout')
@@ -34,7 +37,15 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    throw new Error(error.message)
+    let message = error.message;
+    if (message.includes('already registered')) {
+      message = 'An account with this email already exists. Try logging in instead.';
+    } else if (message.includes('Password should')) {
+      message = 'Password must be at least 6 characters long.';
+    } else if (message.includes('valid email')) {
+      message = 'Please enter a valid email address.';
+    }
+    throw new Error(message)
   }
 
   revalidatePath('/', 'layout')
@@ -53,7 +64,10 @@ export async function signInWithOtp(formData: FormData) {
   })
 
   if (error) {
-    throw new Error(error.message)
+    const message = error.message.includes('rate limit')
+      ? 'Too many attempts. Please wait a few minutes before trying again.'
+      : error.message;
+    throw new Error(message)
   }
 
   return { success: true }
