@@ -128,9 +128,9 @@ NEXT_PUBLIC_AI_MODEL
 6. **Execution snapshot cron** — ✅ Done. Vercel cron captures velocity/blocked/predictability weekly.
 
 ### Phase 3 (Week 6)
-7. **Velocity chart** — Tasks completed per week over time.
-8. **Blocked aging chart** — Average days tasks stay blocked.
-9. **Predictability score** — Plan-vs-actual variance tracking.
+7. **Velocity chart** — ✅ Done. Bar chart of tasks completed per week.
+8. **Blocked aging chart** — ✅ Done. Horizontal bar chart with color-coded severity.
+9. **Predictability score** — ✅ Done. Line chart tracking score over snapshots.
 
 ### Phase 4 (Week 7–8)
 10. **AI next-task recommendation** — Endpoint that suggests what to work on next with rationale.
