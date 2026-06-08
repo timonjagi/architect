@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { LandingView } from './components/LandingView';
 import { createClient } from '@/lib/supabase/client';
 
-export const dynamic = 'force-dynamic';
-
 /**
  * Landing page route.
  */
