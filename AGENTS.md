@@ -33,14 +33,21 @@ bunx drizzle-kit migrate  # Run migration
 ```
 app/
 ├── api/
-│   ├── projects/[id]/tasks/         # Import, list tasks
+│   ├── cron/snapshot/               # Weekly snapshot capture (Vercel cron)
+│   ├── dependencies/[dependencyId]/ # Delete dependency
+│   ├── projects/[id]/dependencies/  # List/add dependencies
 │   ├── projects/[id]/execution/     # Summary, today focus
+│   ├── projects/[id]/review/        # Weekly review stats
+│   ├── projects/[id]/tasks/         # Import, list tasks
 │   └── tasks/[taskId]/              # Update, transition, block, unblock
 ├── components/
 │   ├── DashboardView.tsx            # Main dashboard (config + tabs)
+│   ├── DependencyGraph.tsx          # ReactFlow dependency visualization
 │   ├── ExecutionBoard.tsx           # Kanban task board
+│   ├── FocusView.tsx                # Gamified today focus view
 │   ├── LandingView.tsx              # Landing page
-│   └── Toast.tsx                    # Sonner config
+│   ├── Toast.tsx                    # Sonner config
+│   └── WeeklyReview.tsx             # Retro summary with stats
 ├── dashboard/page.tsx               # Dashboard route
 ├── login/                           # Login + server actions
 ├── signup/                          # Signup
@@ -111,14 +118,14 @@ NEXT_PUBLIC_AI_MODEL
 ## Next Steps
 
 ### Immediate (P0)
-1. **Today Focus tab** — Dedicated UI view for the top-3 focus tasks, not just the board column.
-2. **Blocker aging indicator** — Show days blocked on task cards in the board.
+1. **Today Focus tab** — ✅ Done. Gamified view with progress bar, timer, celebration.
+2. **Blocker aging indicator** — ✅ Done. Color-coded badge (green <2d, amber 2-5d, red >5d).
 3. **Spec → Task mapping refinement** — Test import with real generated specs, tune priority mapping.
 
 ### Phase 2 (Week 4–5)
-4. **Dependency graph** — Visualize task dependencies, detect cycles, highlight critical path.
-5. **Weekly review generator** — Auto-generate retro summary from activity snapshots.
-6. **Execution snapshot cron** — Weekly metrics capture for velocity/predictability trends.
+4. **Dependency graph** — ✅ Done. ReactFlow visualization, cycle detection, critical path highlighting.
+5. **Weekly review generator** — ✅ Done. Activity stats, velocity trend, highlights.
+6. **Execution snapshot cron** — ✅ Done. Vercel cron captures velocity/blocked/predictability weekly.
 
 ### Phase 3 (Week 6)
 7. **Velocity chart** — Tasks completed per week over time.
