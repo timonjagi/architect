@@ -667,3 +667,39 @@ export async function getAnalytics(
     },
   };
 }
+
+export async function importSubtasks(
+  parentTaskId: string,
+  subtasks: { title: string; description: string; estimateMinutes: number; details: string }[]
+): Promise<ExecutionTask[]> {
+  const parent = await getTaskById(parentTaskId);
+  if (!parent) throw new Error('Parent task not found');
+
+  const inserted: ExecutionTask[] = [];
+  for (let i = 0; i < subtasks.length; i++) {
+    const sub = subtasks[i];
+    const [task] = await db
+      .insert(projectTasks)
+      .values({
+        projectId: parent.projectId,
+        specId: parent.specId,
+        epicId: parent.epicId,
+        title: sub.title,
+        description: sub.description,
+        status: 'todo',
+        priority: parent.priority,
+        estimateMinutes: sub.estimateMinutes,
+      })
+      .returning();
+
+    inserted.push(task as ExecutionTask);
+
+    await db.insert(taskActivity).values({
+      taskId: task.id,
+      eventType: 'created' as ActivityEvent,
+      payload: { source: 'decomposition', parentTaskId },
+    });
+  }
+
+  return inserted;
+}

@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2, Circle, Clock, AlertTriangle, Filter,
   RefreshCcw, Plus, ChevronDown, ChevronUp, MoreHorizontal,
-  ArrowRight, Play, Pause, Ban, Trash2, Edit2, Eye
+  ArrowRight, Play, Pause, Ban, Trash2, Edit2, Eye, Layers
 } from 'lucide-react';
 import type { ExecutionTask, TaskStatus, TaskPriority, BlockerType } from '@/types';
+import { TaskDecomposer } from './TaskDecomposer';
 
 interface ExecutionBoardProps {
   projectId: string;
@@ -37,6 +38,7 @@ export function ExecutionBoard({ projectId }: ExecutionBoardProps) {
   const [blockerType, setBlockerType] = useState<BlockerType>('technical');
   const [blockerDetails, setBlockerDetails] = useState('');
   const [importing, setImporting] = useState(false);
+  const [decomposeTask, setDecomposeTask] = useState<string | null>(null);
 
   const fetchTasks = async () => {
     try {
@@ -187,6 +189,7 @@ export function ExecutionBoard({ projectId }: ExecutionBoardProps) {
                     onStatusChange={handleStatusChange}
                     onBlock={() => setShowBlockerModal(task.id)}
                     onUnblock={() => handleUnblockTask(task.id)}
+                    onDecompose={(id) => setDecomposeTask(id)}
                   />
                 ))}
               </div>
@@ -238,6 +241,29 @@ export function ExecutionBoard({ projectId }: ExecutionBoardProps) {
           </div>
         </div>
       )}
+
+      {decomposeTask && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-950 border border-slate-800 rounded-lg w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Decompose Task</h3>
+              <button
+                onClick={() => setDecomposeTask(null)}
+                className="text-slate-500 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <TaskDecomposer
+              taskId={decomposeTask}
+              onImported={() => {
+                setDecomposeTask(null);
+                fetchTasks();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,6 +275,7 @@ interface TaskCardProps {
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onBlock: () => void;
   onUnblock: () => void;
+  onDecompose: (taskId: string) => void;
 }
 
 function BlockerAgeBadge({ blockedSince }: { blockedSince: Date | null }) {
@@ -266,7 +293,7 @@ function BlockerAgeBadge({ blockedSince }: { blockedSince: Date | null }) {
   );
 }
 
-function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock }: TaskCardProps) {
+function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock, onDecompose }: TaskCardProps) {
   const [showActions, setShowActions] = useState(false);
 
   const nextStatus: Record<TaskStatus, TaskStatus | null> = {
@@ -296,7 +323,7 @@ function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock
           {task.description && (
             <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{task.description}</p>
           )}
-        </div>
+    </div>
         <div className="flex items-center gap-1">
           <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border ${priorityConfig[task.priority].color}`}>
             {priorityConfig[task.priority].label}
@@ -332,6 +359,15 @@ function TaskCard({ task, expanded, onToggle, onStatusChange, onBlock, onUnblock
                 >
                   Edit
                 </button>
+                {task.status !== 'done' && (
+                  <button
+                    onClick={() => { onDecompose(task.id); setShowActions(false); }}
+                    className="w-full text-left px-3 py-2 text-xs text-blue-400 hover:bg-slate-800 flex items-center gap-1"
+                  >
+                    <Layers className="w-3 h-3" />
+                    Decompose
+                  </button>
+                )}
               </div>
             )}
           </div>

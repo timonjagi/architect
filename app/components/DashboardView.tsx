@@ -22,6 +22,8 @@ import { FocusView } from './FocusView';
 import { DependencyGraph } from './DependencyGraph';
 import { WeeklyReview } from './WeeklyReview';
 import { AnalyticsBoard } from './AnalyticsBoard';
+import { NextTaskRecommendation } from './NextTaskRecommendation';
+import { DailyStandup } from './DailyStandup';
 import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
@@ -862,11 +864,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       )}
 
                       {activeTab === 'execution' && selectedProjectId && (
-                        <ExecutionBoard projectId={selectedProjectId} />
+                        <div className="space-y-4">
+                          <NextTaskRecommendation projectId={selectedProjectId} />
+                          <ExecutionBoard projectId={selectedProjectId} />
+                        </div>
                       )}
 
                       {activeTab === 'focus' && selectedProjectId && (
-                        <FocusView projectId={selectedProjectId} />
+                        <div className="space-y-4">
+                          <DailyStandup projectId={selectedProjectId} />
+                          <FocusView projectId={selectedProjectId} />
+                        </div>
                       )}
 
                       {activeTab === 'dependencies' && selectedProjectId && (
