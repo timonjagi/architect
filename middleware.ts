@@ -1,10 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
-import { createClient } from '@/lib/supabase/server'
 
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request)
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    return NextResponse.next()
+  }
 
+  const { updateSession } = await import('@/lib/supabase/middleware')
+  const { createClient } = await import('@/lib/supabase/server')
+
+  const response = await updateSession(request)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -13,7 +17,9 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/signup')
 
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   if (isAuthRoute && user) {

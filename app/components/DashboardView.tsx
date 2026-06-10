@@ -17,6 +17,14 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 import JSZip from 'jszip';
 import ReactMarkdown from 'react-markdown';
+import { ExecutionBoard } from './ExecutionBoard';
+import { FocusView } from './FocusView';
+import { DependencyGraph } from './DependencyGraph';
+import { WeeklyReview } from './WeeklyReview';
+import { AnalyticsBoard } from './AnalyticsBoard';
+import { NextTaskRecommendation } from './NextTaskRecommendation';
+import { DailyStandup } from './DailyStandup';
+import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
 // ... (rest of constants stay same)
@@ -112,7 +120,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'architecture' | 'file structure'>('full-spec');
+  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'review' | 'analytics' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -292,6 +300,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     return filteredBlueprints.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredBlueprints, currentPage]);
 
+  const TEXT_FILE_TYPES = [
+    'text/', 'application/json', 'application/javascript',
+    'application/typescript', 'application/xml', 'application/yaml',
+  ];
+
+  const isTextFile = (file: File) => {
+    if (TEXT_FILE_TYPES.some(t => file.type.startsWith(t))) return true;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ['md', 'txt', 'ts', 'tsx', 'js', 'jsx', 'json', 'css', 'html', 'yaml', 'yml', 'sql', 'py', 'rb', 'go', 'rs', 'java', 'sh', 'env', 'gitignore', 'toml', 'csv', 'xml'].includes(ext || '');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -302,13 +321,23 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const newProject = await createProject.mutateAsync("New Project");
         projectId = newProject.id;
         setSelectedProjectId(projectId);
-      } catch (err) {
-        console.error("Failed to auto-create project for upload:", err);
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to create project');
         return;
       }
     }
 
     Array.from(files).forEach((file: File) => {
+      if (!isTextFile(file)) {
+        toast.error(`${file.name}: Unsupported file type. Only text files are supported (md, txt, ts, js, json, etc.)`);
+        return;
+      }
+
+      if (file.size > 500 * 1024) {
+        toast.error(`${file.name}: File too large. Maximum size is 500KB.`);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (ev) => {
         addSource.mutate({
@@ -316,7 +345,14 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           source: {
             name: file.name,
             content: ev.target?.result as string,
-            type: file.type
+            type: file.type || file.name.split('.').pop() || 'text/plain'
+          }
+        }, {
+          onError: (err: any) => {
+            toast.error(err.message || `Failed to upload ${file.name}`);
+          },
+          onSuccess: () => {
+            toast.success(`${file.name} uploaded successfully`);
           }
         });
       };
@@ -333,8 +369,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const newProject = await createProject.mutateAsync("New Project");
         projectId = newProject.id;
         updateProjectQuery(projectId);
-      } catch (err) {
-        console.error("Failed to auto-create project for paste:", err);
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to create project');
         return;
       }
     }
@@ -351,6 +387,10 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setPastedName('');
         setPastedContent('');
         setIsPasteModalOpen(false);
+        toast.success('Context added successfully');
+      },
+      onError: (err: any) => {
+        toast.error(err.message || 'Failed to add context');
       }
     });
   };
@@ -359,7 +399,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const removeSource = (sourceId: string) => {
     if (!selectedProjectId) return;
-    deleteSource.mutate({ projectId: selectedProjectId, sourceId });
+    deleteSource.mutate(
+      { projectId: selectedProjectId, sourceId },
+      {
+        onError: (err: any) => {
+          toast.error(err.message || 'Failed to delete file');
+        },
+        onSuccess: () => {
+          toast.success('File removed');
+        }
+      }
+    );
   };
 
   const handleUpdateProjectName = () => {
@@ -384,12 +434,29 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
-          generateSpec.mutate(newProject.id);
+          generateSpec.mutate(newProject.id, {
+            onError: (err: any) => {
+              toast.error(err.message || 'Failed to generate spec');
+            },
+            onSuccess: () => {
+              toast.success('Spec generated successfully');
+            }
+          });
+        },
+        onError: (err: any) => {
+          toast.error(err.message || 'Failed to create project');
         }
       });
       return;
     }
-    generateSpec.mutate(selectedProjectId);
+    generateSpec.mutate(selectedProjectId, {
+      onError: (err: any) => {
+        toast.error(err.message || 'Failed to generate spec');
+      },
+      onSuccess: () => {
+        toast.success('Spec generated successfully');
+      }
+    });
   };
 
   const removeActiveBlueprint = (blueprintId: string) => {
@@ -663,7 +730,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         Upload
                       </button>
                     </div>
-                    <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                    <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} accept=".md,.txt,.ts,.tsx,.js,.jsx,.json,.css,.html,.yaml,.yml,.sql,.py,.rb,.go,.rs,.java,.sh,.env,.toml,.csv,.xml" className="hidden" />
                   </div>
 
                   {sourcesLoading ? (
@@ -675,11 +742,13 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="py-8 text-center bg-red-500/5 border border-red-500/10 rounded-lg">
                       <AlertCircle className="w-5 h-5 text-red-500 mx-auto mb-2" />
                       <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Failed to load context</p>
+                      <p className="text-[9px] text-slate-500 mt-1">Check your connection and try again</p>
                     </div>
                   ) : !sourcesData || sourcesData.length === 0 ? (
                     <div className="border-2 border-dashed border-slate-900 rounded-lg p-6 text-center">
                       <FileUp className="w-6 h-6 text-slate-800 mx-auto mb-3" />
-                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Optional: Upload specs, DB schemas, or wireframes</p>
+                      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Upload schemas, PRDs, or code context</p>
+                      <p className="text-[8px] text-slate-700 mt-1">.md .txt .ts .js .json .sql .py and more</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -746,7 +815,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex gap-2 items-center">
 
-                        {['full-spec', 'tasks', 'architecture', 'file structure'].map(tab => (
+                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'review', 'analytics', 'architecture', 'file structure'].map(tab => (
                           <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
                         ))}
                       </div>
@@ -792,6 +861,32 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed font-medium animate-in fade-in prose prose-invert prose-xs max-w-none">
                           <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
                         </div>
+                      )}
+
+                      {activeTab === 'execution' && selectedProjectId && (
+                        <div className="space-y-4">
+                          <NextTaskRecommendation projectId={selectedProjectId} />
+                          <ExecutionBoard projectId={selectedProjectId} />
+                        </div>
+                      )}
+
+                      {activeTab === 'focus' && selectedProjectId && (
+                        <div className="space-y-4">
+                          <DailyStandup projectId={selectedProjectId} />
+                          <FocusView projectId={selectedProjectId} />
+                        </div>
+                      )}
+
+                      {activeTab === 'dependencies' && selectedProjectId && (
+                        <DependencyGraph projectId={selectedProjectId} />
+                      )}
+
+                      {activeTab === 'review' && selectedProjectId && (
+                        <WeeklyReview projectId={selectedProjectId} />
+                      )}
+
+                      {activeTab === 'analytics' && selectedProjectId && (
+                        <AnalyticsBoard projectId={selectedProjectId} />
                       )}
 
                       {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}

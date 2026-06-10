@@ -1,11 +1,23 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { config } from 'dotenv';
-config({ path: '.env.local' }); // or .env.local
 
-const connectionString = process.env.DATABASE_URL!;
+let _db: PostgresJsDatabase<typeof schema> | null = null;
 
-// Disable prefetch as it is not supported for "Transaction" pool mode
-export const client = postgres(connectionString, { prepare: false });
-export const db = drizzle(client, { schema });
+function getClient() {
+  const connectionString = process.env.DATABASE_URL!;
+  return postgres(connectionString, { prepare: false });
+}
+
+export function getDb(): PostgresJsDatabase<typeof schema> {
+  if (!_db) {
+    _db = drizzle(getClient(), { schema });
+  }
+  return _db;
+}
+
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
+  get(_, prop) {
+    return (getDb() as any)[prop];
+  },
+});
