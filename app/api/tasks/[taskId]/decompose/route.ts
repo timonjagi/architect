@@ -16,7 +16,7 @@ export async function POST(
     }
 
     const result = await aiDecomposeTask(taskId);
-    return NextResponse.json({ success: true, data: result });
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('AI decompose error:', error);
     return NextResponse.json(

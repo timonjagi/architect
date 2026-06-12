@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec, StateManagement } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
-import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
+import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useSaveSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { architectureSchema } from '../../lib/ai-schemas';
 import { createClient } from '../../lib/supabase/client';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
@@ -101,12 +103,34 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { data: project } = useProject(selectedProjectId);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
-  const generateSpec = useGenerateSpec();
+  const saveSpec = useSaveSpec();
   const { data: specs } = useProjectSpecs(selectedProjectId);
   const { data: sourcesData, isLoading: sourcesLoading, isError: sourcesError } = useSources(selectedProjectId);
   const addSource = useAddSource();
   const router = useRouter();
   const supabase = createClient();
+
+  const {
+    object: streamResult,
+    isLoading: isStreaming,
+    submit: streamSpec,
+  } = useObject({
+    api: `/api/projects/${selectedProjectId || 'placeholder'}/generate-spec`,
+    schema: architectureSchema,
+    onFinish: async ({ object }: { object: OptimizationResult | undefined; error: Error | undefined }) => {
+      if (object && selectedProjectId) {
+        try {
+          await saveSpec.mutateAsync({ projectId: selectedProjectId, result: object as OptimizationResult });
+          toast.success('Spec generated successfully');
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to save spec');
+        }
+      }
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to generate spec');
+    },
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -117,8 +141,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rawPrompt, setRawPrompt] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'review' | 'analytics' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
@@ -211,6 +233,18 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   // Sync latest spec with result
   useEffect(() => {
+    if (streamResult) {
+      setResult({
+        coldStartGuide: streamResult.coldStartGuide || '',
+        directoryStructure: streamResult.directoryStructure || '',
+        implementationPlan: (streamResult.implementationPlan || []) as any,
+        architectureNotes: streamResult.architectureNotes || '',
+        fullMarkdownSpec: streamResult.fullMarkdownSpec || '',
+      });
+    }
+  }, [streamResult]);
+
+  useEffect(() => {
     if (specs && specs.length > 0) {
       const selectedSpec = activeVersionId
         ? specs.find((s: ProjectSpec) => s.id === activeVersionId)
@@ -229,11 +263,11 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         directoryStructure: targetSpec.directoryStructure || "",
         fullMarkdownSpec: targetSpec.fullMarkdownSpec || targetSpec.coldStartGuide
       });
-    } else {
+    } else if (!isStreaming) {
       setResult(null);
       setActiveVersionId(null);
     }
-  }, [specs, activeVersionId]);
+  }, [specs, activeVersionId, isStreaming]);
 
   const handleExport = async () => {
     if (!result || !project) return;
@@ -434,14 +468,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
-          generateSpec.mutate(newProject.id, {
-            onError: (err: any) => {
-              toast.error(err.message || 'Failed to generate spec');
-            },
-            onSuccess: () => {
-              toast.success('Spec generated successfully');
-            }
-          });
         },
         onError: (err: any) => {
           toast.error(err.message || 'Failed to create project');
@@ -449,13 +475,27 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       });
       return;
     }
-    generateSpec.mutate(selectedProjectId, {
-      onError: (err: any) => {
-        toast.error(err.message || 'Failed to generate spec');
+
+    const mappedSources = (sourcesData || []).map(s => ({
+      name: s.name,
+      content: s.content,
+      type: s.type,
+    }));
+
+    streamSpec({
+      config: {
+        framework: config.framework,
+        styling: config.styling,
+        backend: config.backend,
+        tooling: config.tooling,
+        providers: config.providers,
+        payments: config.payments,
+        stateManagement: config.stateManagement,
+        sources: mappedSources,
+        selectedBlueprints: activeBlueprints,
+        customContext: rawPrompt || '',
+        rawPrompt: rawPrompt || '',
       },
-      onSuccess: () => {
-        toast.success('Spec generated successfully');
-      }
     });
   };
 
@@ -789,22 +829,22 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                   <button
                     onClick={handleOptimize}
-                    disabled={generateSpec.isPending || (!selectedProjectId && !rawPrompt.trim() && (!sourcesData || sourcesData.length === 0))}
+                    disabled={isStreaming || (!selectedProjectId && !rawPrompt.trim() && (!sourcesData || sourcesData.length === 0))}
                     className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl"
                   >
-                    {generateSpec.isPending ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
+                    {isStreaming ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
                   </button>
                 </section>
               </div>
 
               <div className="xl:col-span-7 flex flex-col min-h-[500px]">
-                {!result && !generateSpec.isPending ? (
+                {!result && !isStreaming ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-900 rounded-xl bg-slate-950/40">
                     <PlayCircle className="w-16 h-16 text-slate-900 mb-6" />
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Architect Board</h3>
                     <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Select modules to build a production-ready implementation plan.</p>
                   </div>
-                ) : generateSpec.isPending ? (
+                ) : isStreaming && !result ? (
                   <div className="flex-1 flex flex-col items-center justify-center">
                     <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center animate-pulse">
                       <RefreshCcw className="w-6 h-6 text-slate-950 animate-spin" />

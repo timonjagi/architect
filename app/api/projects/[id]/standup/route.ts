@@ -7,8 +7,8 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
-    const standup = await aiGenerateStandup(projectId);
-    return NextResponse.json({ success: true, data: standup });
+    const result = await aiGenerateStandup(projectId);
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('AI standup error:', error);
     return NextResponse.json(
