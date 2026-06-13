@@ -1,34 +1,52 @@
 import { z } from 'zod';
 
-export const architectureSchema = z.object({
-  coldStartGuide: z.string().describe("Markdown setup guide: prerequisites, install commands, .env template, DB init. Be specific with exact package names."),
-
-  directoryStructure: z.string().describe("ASCII tree of project structure."),
-
-  implementationPlan: z.array(z.object({
+export const taskItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  details: z.string().describe("Exact file paths, function signatures, library imports, and logic flow. No ambiguity."),
+  testStrategy: z.string().optional().default("Manual verification"),
+  priority: z.enum(['high', 'medium', 'low']).optional().default('medium'),
+  files_involved: z.array(z.string()).optional().default([]),
+  dependencies: z.array(z.string()).optional().default([]),
+  subtasks: z.array(z.object({
     id: z.string(),
     title: z.string(),
     description: z.string(),
-    details: z.string().describe("Exact file paths, function signatures, library imports, and logic flow. No ambiguity."),
-    testStrategy: z.string().optional().default("Manual verification"),
+    details: z.string().optional().default(""),
+    testStrategy: z.string().optional().default(""),
     priority: z.enum(['high', 'medium', 'low']).optional().default('medium'),
-    files_involved: z.array(z.string()).optional().default([]),
     dependencies: z.array(z.string()).optional().default([]),
-    subtasks: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      description: z.string(),
-      details: z.string().optional().default(""),
-      testStrategy: z.string().optional().default(""),
-      priority: z.enum(['high', 'medium', 'low']).optional().default('medium'),
-      dependencies: z.array(z.string()).optional().default([]),
-      files_involved: z.array(z.string()).optional().default([]),
-    })).optional().default([])
-  })).describe("Ordered implementation tasks. Each must be atomic: one developer, one PR, one testable unit. Include exact file paths and function names."),
+    files_involved: z.array(z.string()).optional().default([]),
+  })).optional().default([])
+});
 
+export const coldStartSchema = z.object({
+  coldStartGuide: z.string().describe("Markdown setup guide: prerequisites, install commands, .env template, DB init. Be specific with exact package names."),
+});
+
+export const directoryStructureSchema = z.object({
+  directoryStructure: z.string().describe("ASCII tree of project structure."),
+});
+
+export const implementationPlanSchema = z.object({
+  implementationPlan: z.array(taskItemSchema).describe("Ordered implementation tasks. Each must be atomic: one developer, one PR, one testable unit. Include exact file paths and function names."),
+});
+
+export const architectureNotesSchema = z.object({
   architectureNotes: z.string().describe("System architecture: high-level design, component diagram (mermaid), data flow, security boundaries, scaling strategy."),
+});
 
+export const fullMarkdownSpecSchema = z.object({
   fullMarkdownSpec: z.string().describe("Complete single-file spec combining kickoff, architecture, and implementation plan into a readable document.")
+});
+
+export const architectureSchema = z.object({
+  coldStartGuide: z.string(),
+  directoryStructure: z.string(),
+  implementationPlan: z.array(taskItemSchema),
+  architectureNotes: z.string(),
+  fullMarkdownSpec: z.string(),
 });
 
 export const recommendationSchema = z.object({

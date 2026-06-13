@@ -22,9 +22,8 @@ export async function POST(
       return NextResponse.json({ error: 'Missing config' }, { status: 400 });
     }
 
-    const result = await optimizePrompt(config.rawPrompt || 'Generate spec', config);
-
-    return result.toTextStreamResponse();
+    const response = await optimizePrompt(config.rawPrompt || 'Generate spec', config);
+    return response;
   } catch (error) {
     console.error('Spec generation error:', error);
     return NextResponse.json(
