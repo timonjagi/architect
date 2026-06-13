@@ -7,7 +7,7 @@ import {
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle,
-  Save
+  Save, Cpu
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec, StateManagement } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
@@ -26,6 +26,7 @@ import { WeeklyReview } from './WeeklyReview';
 import { AnalyticsBoard } from './AnalyticsBoard';
 import { NextTaskRecommendation } from './NextTaskRecommendation';
 import { DailyStandup } from './DailyStandup';
+import { StreamingStageView } from './StreamingStageView';
 import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
@@ -126,11 +127,15 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           toast.error(err.message || 'Failed to save spec');
         }
       }
+      setStreamingDone(true);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to generate spec');
+      setStreamingDone(true);
     },
   });
+
+  const [streamingDone, setStreamingDone] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -142,7 +147,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rawPrompt, setRawPrompt] = useState('');
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'review' | 'analytics' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -157,6 +161,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [mounted, setMounted] = useState(false);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['quick-start']));
   const [exportSelection, setExportSelection] = useState({
     implementationPlan: true,
     architectureNotes: true,
@@ -231,19 +236,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   }, [project]);
 
-  // Sync latest spec with result
-  useEffect(() => {
-    if (streamResult) {
-      setResult({
-        coldStartGuide: streamResult.coldStartGuide || '',
-        directoryStructure: streamResult.directoryStructure || '',
-        implementationPlan: (streamResult.implementationPlan || []) as any,
-        architectureNotes: streamResult.architectureNotes || '',
-        fullMarkdownSpec: streamResult.fullMarkdownSpec || '',
-      });
-    }
-  }, [streamResult]);
-
   useEffect(() => {
     if (specs && specs.length > 0) {
       const selectedSpec = activeVersionId
@@ -263,11 +255,12 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         directoryStructure: targetSpec.directoryStructure || "",
         fullMarkdownSpec: targetSpec.fullMarkdownSpec || targetSpec.coldStartGuide
       });
-    } else if (!isStreaming) {
+      setStreamingDone(false);
+    } else if (!isStreaming && !streamingDone) {
       setResult(null);
       setActiveVersionId(null);
     }
-  }, [specs, activeVersionId, isStreaming]);
+  }, [specs, activeVersionId, isStreaming, streamingDone]);
 
   const handleExport = async () => {
     if (!result || !project) return;
@@ -476,6 +469,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       return;
     }
 
+    setStreamingDone(false);
+    setResult(null);
+
     const mappedSources = (sourcesData || []).map(s => ({
       name: s.name,
       content: s.content,
@@ -517,6 +513,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const activeCategoryLabel = useMemo(() => {
     return CATEGORIES.find(c => c.id === activeCategory)?.label;
   }, [activeCategory]);
+
+  const toggleAccordion = (key: string) => {
+    setOpenAccordions(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const isStreamingView = isStreaming || streamingDone;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-white/20">
@@ -838,100 +845,229 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               </div>
 
               <div className="xl:col-span-7 flex flex-col min-h-[500px]">
-                {!result && !isStreaming ? (
+                {!result && !isStreamingView ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-900 rounded-xl bg-slate-950/40">
                     <PlayCircle className="w-16 h-16 text-slate-900 mb-6" />
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Architect Board</h3>
                     <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Select modules to build a production-ready implementation plan.</p>
                   </div>
-                ) : isStreaming && !result ? (
-                  <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center animate-pulse">
-                      <RefreshCcw className="w-6 h-6 text-slate-950 animate-spin" />
-                    </div>
-                  </div>
+                ) : isStreamingView ? (
+                  <StreamingStageView streamResult={streamResult as Partial<OptimizationResult>} isLoading={isStreaming} />
                 ) : (
                   <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col">
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
-                      <div className="flex gap-2 items-center">
-
-                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'review', 'analytics', 'architecture', 'file structure'].map(tab => (
-                          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
-                        ))}
-                      </div>
-
-
-
                       <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Spec Output</span>
                         {specs && specs.length > 0 && (
-                          <div className="flex items-center gap-2 mr-2">
-                            <select
-                              value={activeVersionId || ''}
-                              onChange={(e) => setActiveVersionId(e.target.value)}
-                              className="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded px-2 py-1.5 focus:outline-none focus:border-slate-500"
-                            >
-                              {specs.map((s: any) => (
-                                <option key={s.id} value={s.id}>v{s.version}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <select
+                            value={activeVersionId || ''}
+                            onChange={(e) => setActiveVersionId(e.target.value)}
+                            className="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded px-2 py-1.5 focus:outline-none focus:border-slate-500 ml-2"
+                          >
+                            {specs.map((s: any) => (
+                              <option key={s.id} value={s.id}>v{s.version}</option>
+                            ))}
+                          </select>
                         )}
-                        <button onClick={() => setIsExportModalOpen(true)} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setStreamingDone(false);
+                            setResult(null);
+                            handleOptimize();
+                          }}
+                          disabled={isStreaming}
+                          className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          <RefreshCcw className="w-3 h-3" /> Regenerate
+                        </button>
+                        <button onClick={() => setIsExportModalOpen(true)} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors flex items-center gap-1.5">
                           <Save className="w-3 h-3" /> Export
                         </button>
                       </div>
                     </div>
-                    <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                      {activeTab === 'tasks' && (
-                        <div className="space-y-8 animate-in fade-in duration-300">
-                          <div className="p-6 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-5">
-                            <div className="p-3 bg-white rounded-md text-slate-950 shrink-0"><PlayCircle className="w-5 h-5" /></div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Architectural Kickoff</h4>
-                              <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
-                                <ReactMarkdown>{result?.coldStartGuide || ''}</ReactMarkdown>
-                              </div>
+                    <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
+
+                      {/* Accordion: Quick Start */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('quick-start')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <PlayCircle className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Quick Start</span>
+                          </span>
+                          {openAccordions.has('quick-start') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('quick-start') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
+                              <ReactMarkdown>{result?.coldStartGuide || ''}</ReactMarkdown>
                             </div>
                           </div>
-                          <div className="space-y-4">{result?.implementationPlan.map((task) => (<TaskCard key={task.id} task={task} />))}</div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Implementation Plan */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('tasks')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <ListTodo className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Implementation Plan</span>
+                            <span className="text-[9px] font-black text-slate-500 ml-1">{result?.implementationPlan?.length || 0} tasks</span>
+                          </span>
+                          {openAccordions.has('tasks') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('tasks') && (
+                          <div className="p-5 border-t border-slate-800 space-y-3 animate-in slide-in-from-top-1 duration-200">
+                            {result?.implementationPlan?.map((task) => (
+                              <TaskCard key={task.id} task={task} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Architecture */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('architecture')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <Cpu className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Architecture</span>
+                          </span>
+                          {openAccordions.has('architecture') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('architecture') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium">{result?.architectureNotes}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: File Structure */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('file-structure')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <FolderTree className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">File Structure</span>
+                          </span>
+                          {openAccordions.has('file-structure') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('file-structure') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <pre className="text-[10px] text-slate-200 overflow-x-auto font-mono">{result?.directoryStructure}</pre>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Full Spec */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('full-spec')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Full Spec</span>
+                          </span>
+                          {openAccordions.has('full-spec') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('full-spec') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-300 leading-relaxed font-medium prose prose-invert prose-xs max-w-none">
+                              <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Execution */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('execution')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Zap className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Execution</span>
+                            </span>
+                            {openAccordions.has('execution') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('execution') && (
+                            <div className="p-5 border-t border-slate-800 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                              <NextTaskRecommendation projectId={selectedProjectId} />
+                              <ExecutionBoard projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'full-spec' && (
-                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed font-medium animate-in fade-in prose prose-invert prose-xs max-w-none">
-                          <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
+                      {/* Accordion: Focus */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('focus')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <BadgeCheck className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Focus</span>
+                            </span>
+                            {openAccordions.has('focus') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('focus') && (
+                            <div className="p-5 border-t border-slate-800 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                              <DailyStandup projectId={selectedProjectId} />
+                              <FocusView projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'execution' && selectedProjectId && (
-                        <div className="space-y-4">
-                          <NextTaskRecommendation projectId={selectedProjectId} />
-                          <ExecutionBoard projectId={selectedProjectId} />
+                      {/* Accordion: Dependencies */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('dependencies')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Boxes className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Dependencies</span>
+                            </span>
+                            {openAccordions.has('dependencies') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('dependencies') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <DependencyGraph projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'focus' && selectedProjectId && (
-                        <div className="space-y-4">
-                          <DailyStandup projectId={selectedProjectId} />
-                          <FocusView projectId={selectedProjectId} />
+                      {/* Accordion: Review */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('review')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <ClipboardList className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Weekly Review</span>
+                            </span>
+                            {openAccordions.has('review') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('review') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <WeeklyReview projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'dependencies' && selectedProjectId && (
-                        <DependencyGraph projectId={selectedProjectId} />
+                      {/* Accordion: Analytics */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('analytics')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Analytics</span>
+                            </span>
+                            {openAccordions.has('analytics') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('analytics') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <AnalyticsBoard projectId={selectedProjectId} />
+                            </div>
+                          )}
+                        </div>
                       )}
 
-                      {activeTab === 'review' && selectedProjectId && (
-                        <WeeklyReview projectId={selectedProjectId} />
-                      )}
-
-                      {activeTab === 'analytics' && selectedProjectId && (
-                        <AnalyticsBoard projectId={selectedProjectId} />
-                      )}
-
-                      {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}
-
-                      {activeTab === 'file structure' && <pre className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-200 overflow-x-auto mono animate-in fade-in">{result?.directoryStructure}</pre>}
                     </div>
                   </div>
                 )}
