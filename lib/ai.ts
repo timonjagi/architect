@@ -11,46 +11,48 @@ import {
   fullMarkdownSpecSchema,
 } from './ai-schemas';
 
-function buildTechStackContext(config: PromptConfig): string {
-  return `TECH STACK:
-- Framework: ${config.framework}
-- Styling: ${config.styling}
-- Backend: ${config.backend}
-- Tooling: ${config.tooling.join(', ')}
-- Notifications: ${config.providers?.join(', ') || 'None'}
-- Payments: ${config.payments?.join(', ') || 'None'}
-- Custom Context: ${config.customContext || 'None'}`;
-}
+// --- Context building (minimal, grows between stages) ---
 
-function buildContextBlock(config: PromptConfig): { techStack: string; sources: string; blueprints: string } {
-  const techStack = buildTechStackContext(config);
-
-  const sources = config.sources.length > 0
-    ? `PROJECT DOCUMENTS:\n${config.sources.map(s => truncateSource(s.name, s.content)).join('\n\n')}`
-    : '';
-
+function buildCoreContext(config: PromptConfig, rawPrompt: string): string {
   const blueprints = config.selectedBlueprints?.length
-    ? `SELECTED MODULES:\n${config.selectedBlueprints.map(b => {
-      const bp = BLUEPRINTS.find(p => p.id === b.blueprintId);
-      const subs = b.selectedSubLabels.map(label => {
-        const sub = bp?.subcategories.find(s => s.label === label);
-        return sub ? `  ${label}: ${sub.description}` : `  ${label}`;
-      }).join('\n');
-      return `${b.name} — ${b.prompt}\n${subs}`;
-    }).join('\n')}`
-    : '';
+    ? config.selectedBlueprints.map(b => b.name).join(', ')
+    : 'None';
 
-  return { techStack, sources, blueprints };
+  return `PROJECT: ${rawPrompt || 'Design the system based on selected modules.'}
+STACK: ${config.framework} + ${config.styling} + ${config.backend}
+TOOLING: ${config.tooling.join(', ')}
+NOTIFICATIONS: ${config.providers?.join(', ') || 'None'}
+PAYMENTS: ${config.payments?.join(', ') || 'None'}
+STATE: ${config.stateManagement || 'None'}
+MODULES: ${blueprints}
+CONTEXT: ${config.customContext || 'None'}`;
 }
 
-function buildColdStartPrompt(config: PromptConfig, ctx: { techStack: string; sources: string; blueprints: string }): string {
+function buildFullSourcesBlock(config: PromptConfig): string {
+  if (config.sources.length === 0) return '';
+  return `\nPROJECT DOCUMENTS:\n${config.sources.map(s => truncateSource(s.name, s.content)).join('\n\n')}`;
+}
+
+function buildBlueprintDetails(config: PromptConfig): string {
+  if (!config.selectedBlueprints?.length) return '';
+  return `\nSELECTED MODULES:\n${config.selectedBlueprints.map(b => {
+    const bp = BLUEPRINTS.find(p => p.id === b.blueprintId);
+    const subs = b.selectedSubLabels.map(label => {
+      const sub = bp?.subcategories.find(s => s.label === label);
+      return sub ? `  ${label}: ${sub.description}` : `  ${label}`;
+    }).join('\n');
+    return `${b.name} — ${b.prompt}\n${subs}`;
+  }).join('\n')}`;
+}
+
+// --- Stage prompts ---
+
+function buildStage1Prompt(config: PromptConfig, core: string, sources: string, blueprints: string): string {
   return `ROLE: Principal Software Architect writing a project kickoff guide.
 
-${ctx.techStack}
-
-${ctx.sources}
-
-${ctx.blueprints}
+${core}
+${sources}
+${blueprints}
 
 TASK: Generate a comprehensive Cold Start Guide as markdown.
 
@@ -69,17 +71,13 @@ RULES:
 - Include version ranges where important`;
 }
 
-function buildDirectoryStructurePrompt(config: PromptConfig, ctx: { techStack: string; sources: string; blueprints: string }, coldStartGuide: string): string {
+function buildStage2Prompt(core: string, coldStartSummary: string): string {
   return `ROLE: Principal Software Architect designing project file structure.
 
-${ctx.techStack}
+${core}
 
-${ctx.sources}
-
-${ctx.blueprints}
-
-COLD START GUIDE (already generated):
-${coldStartGuide.slice(0, 1500)}
+KEY DECISIONS FROM SETUP:
+${coldStartSummary}
 
 TASK: Generate the complete directory structure as an ASCII tree.
 
@@ -89,23 +87,19 @@ RULES:
 - Show the full tree with proper indentation using ├── and └──
 - Group related files logically (features, utilities, types, etc.)
 - Include config files (tsconfig, next.config, etc.)
-- Include the files mentioned in the cold start guide`;
+- Include the files mentioned in the setup guide`;
 }
 
-function buildImplementationPlanPrompt(config: PromptConfig, ctx: { techStack: string; sources: string; blueprints: string }, coldStartGuide: string, directoryStructure: string): string {
+function buildStage3Prompt(core: string, coldStartSummary: string, dirSummary: string): string {
   return `ROLE: Principal Software Architect producing a machine-executable implementation plan.
 
-${ctx.techStack}
+${core}
 
-${ctx.sources}
+SETUP SUMMARY:
+${coldStartSummary}
 
-${ctx.blueprints}
-
-COLD START GUIDE:
-${coldStartGuide.slice(0, 1500)}
-
-DIRECTORY STRUCTURE:
-${directoryStructure.slice(0, 2000)}
+FILE STRUCTURE SUMMARY:
+${dirSummary}
 
 TASK: Generate an ordered list of implementation tasks.
 
@@ -115,29 +109,24 @@ RULES:
 - Each task must be completable in one focused work session
 - Every file path must be absolute from project root
 - Every function must include signature + return type
-- Every dependency must include exact package name and version range
 - Include exact file paths and function names in details
 - Include subtasks for complex tasks (30-90 min each)
 - Start with foundation tasks (types, schemas, interfaces) then build up`;
 }
 
-function buildArchitectureNotesPrompt(config: PromptConfig, ctx: { techStack: string; sources: string; blueprints: string }, coldStartGuide: string, directoryStructure: string, implementationPlan: string): string {
+function buildStage4Prompt(core: string, coldStartSummary: string, dirSummary: string, planSummary: string): string {
   return `ROLE: Principal Software Architect documenting system architecture.
 
-${ctx.techStack}
+${core}
 
-${ctx.sources}
+SETUP SUMMARY:
+${coldStartSummary}
 
-${ctx.blueprints}
+FILE STRUCTURE SUMMARY:
+${dirSummary}
 
-COLD START GUIDE:
-${coldStartGuide.slice(0, 1000)}
-
-DIRECTORY STRUCTURE:
-${directoryStructure.slice(0, 1500)}
-
-IMPLEMENTATION PLAN:
-${implementationPlan.slice(0, 3000)}
+IMPLEMENTATION PLAN SUMMARY:
+${planSummary}
 
 TASK: Generate comprehensive architecture documentation.
 
@@ -157,14 +146,10 @@ RULES:
 - Document security boundaries clearly`;
 }
 
-function buildFullSpecPrompt(config: PromptConfig, ctx: { techStack: string; sources: string; blueprints: string }, coldStartGuide: string, directoryStructure: string, implementationPlan: string, architectureNotes: string): string {
+function buildStage5Prompt(core: string, coldStartGuide: string, directoryStructure: string, implementationPlan: string, architectureNotes: string): string {
   return `ROLE: Principal Software Architect compiling a complete project specification.
 
-${ctx.techStack}
-
-${ctx.sources}
-
-${ctx.blueprints}
+${core}
 
 You have already generated the following sections:
 
@@ -199,6 +184,72 @@ RULES:
 - Add any missing cross-references between tasks and files`;
 }
 
+// --- Summary extractors (keep context small for later stages) ---
+
+function extractColdStartSummary(coldStartGuide: string): string {
+  // Extract key info: packages, env vars, DB setup
+  const lines = coldStartGuide.split('\n');
+  const summary: string[] = [];
+  let inEnvSection = false;
+  let inDbSection = false;
+
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    if (lower.includes('env') || lower.includes('environment')) inEnvSection = true;
+    if (lower.includes('database') || lower.includes('postgres') || lower.includes('supabase')) inDbSection = true;
+    if (lower.startsWith('#') || lower.startsWith('##')) {
+      inEnvSection = false;
+      inDbSection = false;
+    }
+
+    // Capture install commands
+    if (line.match(/^(npm|bun|yarn|pnpm)\s+(install|add|i)\s+/)) {
+      summary.push(`Install: ${line.trim()}`);
+    }
+    // Capture env vars
+    if (inEnvSection && line.match(/^[A-Z_]+=|\.env/)) {
+      summary.push(`Env: ${line.trim()}`);
+    }
+    // Capture DB setup
+    if (inDbSection && (line.includes('migrate') || line.includes('push') || line.includes('create'))) {
+      summary.push(`DB: ${line.trim()}`);
+    }
+  }
+
+  return summary.length > 0 ? summary.join('\n') : coldStartGuide.slice(0, 800);
+}
+
+function extractDirSummary(directoryStructure: string): string {
+  // Extract top-level directories and key files
+  const lines = directoryStructure.split('\n');
+  const summary: string[] = [];
+  let depth = 0;
+
+  for (const line of lines) {
+    // Count depth by indentation
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith('├──') || trimmed.startsWith('└──')) {
+      const name = trimmed.replace(/^[├└──\s]+/, '').split('/')[0];
+      if (name && !summary.includes(name) && !name.startsWith('.')) {
+        summary.push(name);
+      }
+    }
+  }
+
+  return summary.length > 0 ? `Key directories/files: ${summary.slice(0, 20).join(', ')}` : directoryStructure.slice(0, 1000);
+}
+
+function extractPlanSummary(implementationPlan: any[]): string {
+  // Extract task titles and order
+  if (!Array.isArray(implementationPlan) || implementationPlan.length === 0) return 'No tasks.';
+
+  return implementationPlan.map((t: any, i: number) =>
+    `${i + 1}. ${t.title || 'Untitled'} (${t.priority || 'medium'})`
+  ).join('\n');
+}
+
+// --- Main function ---
+
 export const optimizePrompt = async (
   rawPrompt: string,
   config: PromptConfig
@@ -207,70 +258,68 @@ export const optimizePrompt = async (
     throw new Error("OPENROUTER_API_KEY is missing.");
   }
 
-  const ctx = buildContextBlock(config);
+  const core = buildCoreContext(config, rawPrompt);
+  const sources = buildFullSourcesBlock(config);
+  const blueprints = buildBlueprintDetails(config);
   const prompt = rawPrompt || 'Design the system based on selected modules.';
 
   const encoder = new TextEncoder();
-  let isFirst = true;
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // Stage 1: Cold Start Guide
+        // Stage 1: Cold Start Guide (full sources + blueprints)
         const stage1 = streamObject({
           model: openrouter(DEFAULT_MODEL),
           schema: coldStartSchema,
-          system: buildColdStartPrompt(config, ctx),
+          system: buildStage1Prompt(config, core, sources, blueprints),
           prompt,
         });
         const s1 = await stage1.object;
-        const encoded1 = JSON.stringify(s1.coldStartGuide);
-        controller.enqueue(encoder.encode(`{"coldStartGuide":${encoded1}`));
-        isFirst = false;
+        const coldStartSummary = extractColdStartSummary(s1.coldStartGuide);
+        controller.enqueue(encoder.encode(`{"coldStartGuide":${JSON.stringify(s1.coldStartGuide)}`));
 
-        // Stage 2: Directory Structure
+        // Stage 2: Directory Structure (no sources, condensed context)
         const stage2 = streamObject({
           model: openrouter(DEFAULT_MODEL),
           schema: directoryStructureSchema,
-          system: buildDirectoryStructurePrompt(config, ctx, s1.coldStartGuide),
+          system: buildStage2Prompt(core, coldStartSummary),
           prompt,
         });
         const s2 = await stage2.object;
-        const encoded2 = JSON.stringify(s2.directoryStructure);
-        controller.enqueue(encoder.encode(`,"directoryStructure":${encoded2}`));
+        const dirSummary = extractDirSummary(s2.directoryStructure);
+        controller.enqueue(encoder.encode(`,"directoryStructure":${JSON.stringify(s2.directoryStructure)}`));
 
-        // Stage 3: Implementation Plan
+        // Stage 3: Implementation Plan (no sources, condensed context)
         const stage3 = streamObject({
           model: openrouter(DEFAULT_MODEL),
           schema: implementationPlanSchema,
-          system: buildImplementationPlanPrompt(config, ctx, s1.coldStartGuide, s2.directoryStructure),
+          system: buildStage3Prompt(core, coldStartSummary, dirSummary),
           prompt,
         });
         const s3 = await stage3.object;
-        const encoded3 = JSON.stringify(s3.implementationPlan);
-        controller.enqueue(encoder.encode(`,"implementationPlan":${encoded3}`));
+        const planSummary = extractPlanSummary(s3.implementationPlan);
+        controller.enqueue(encoder.encode(`,"implementationPlan":${JSON.stringify(s3.implementationPlan)}`));
 
-        // Stage 4: Architecture Notes
+        // Stage 4: Architecture Notes (no sources, condensed context)
         const stage4 = streamObject({
           model: openrouter(DEFAULT_MODEL),
           schema: architectureNotesSchema,
-          system: buildArchitectureNotesPrompt(config, ctx, s1.coldStartGuide, s2.directoryStructure, JSON.stringify(s3.implementationPlan)),
+          system: buildStage4Prompt(core, coldStartSummary, dirSummary, planSummary),
           prompt,
         });
         const s4 = await stage4.object;
-        const encoded4 = JSON.stringify(s4.architectureNotes);
-        controller.enqueue(encoder.encode(`,"architectureNotes":${encoded4}`));
+        controller.enqueue(encoder.encode(`,"architectureNotes":${JSON.stringify(s4.architectureNotes)}`));
 
-        // Stage 5: Full Markdown Spec
+        // Stage 5: Full Spec (full content for assembly)
         const stage5 = streamObject({
           model: openrouter(DEFAULT_MODEL),
           schema: fullMarkdownSpecSchema,
-          system: buildFullSpecPrompt(config, ctx, s1.coldStartGuide, s2.directoryStructure, JSON.stringify(s3.implementationPlan), s4.architectureNotes),
+          system: buildStage5Prompt(core, s1.coldStartGuide, s2.directoryStructure, JSON.stringify(s3.implementationPlan), s4.architectureNotes),
           prompt,
         });
         const s5 = await stage5.object;
-        const encoded5 = JSON.stringify(s5.fullMarkdownSpec);
-        controller.enqueue(encoder.encode(`,"fullMarkdownSpec":${encoded5}}`));
+        controller.enqueue(encoder.encode(`,"fullMarkdownSpec":${JSON.stringify(s5.fullMarkdownSpec)}}`));
 
         controller.close();
       } catch (error) {
