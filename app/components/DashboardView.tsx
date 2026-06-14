@@ -7,11 +7,13 @@ import {
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle,
-  Save
+  Save, Cpu, Loader2
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec, StateManagement } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
-import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useGenerateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
+import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useSaveSpec, useCreatePlaceholderSpec, useUpdateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { architectureSchema } from '../../lib/ai-schemas';
 import { createClient } from '../../lib/supabase/client';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
@@ -24,6 +26,7 @@ import { WeeklyReview } from './WeeklyReview';
 import { AnalyticsBoard } from './AnalyticsBoard';
 import { NextTaskRecommendation } from './NextTaskRecommendation';
 import { DailyStandup } from './DailyStandup';
+import { StreamingStageView } from './StreamingStageView';
 import { toast } from 'sonner';
 
 const FRAMEWORKS: Framework[] = ['Next.js', 'React', 'Vue 3', 'SvelteKit', 'Astro'];
@@ -101,12 +104,41 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { data: project } = useProject(selectedProjectId);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
-  const generateSpec = useGenerateSpec();
+  const saveSpec = useSaveSpec();
+  const createPlaceholder = useCreatePlaceholderSpec();
+  const updateSpec = useUpdateSpec();
   const { data: specs } = useProjectSpecs(selectedProjectId);
   const { data: sourcesData, isLoading: sourcesLoading, isError: sourcesError } = useSources(selectedProjectId);
   const addSource = useAddSource();
   const router = useRouter();
   const supabase = createClient();
+
+  const {
+    object: streamResult,
+    isLoading: isStreaming,
+    submit: streamSpec,
+  } = useObject({
+    api: `/api/projects/${selectedProjectId || 'placeholder'}/generate-spec`,
+    schema: architectureSchema,
+    onFinish: async ({ object }: { object: OptimizationResult | undefined; error: Error | undefined }) => {
+      if (object && selectedProjectId && placeholderSpecId) {
+        try {
+          await updateSpec.mutateAsync({ specId: placeholderSpecId, projectId: selectedProjectId, result: object as OptimizationResult });
+          toast.success('Spec generated successfully');
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to save spec');
+        }
+      }
+      setStreamingDone(true);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to generate spec');
+      setStreamingDone(true);
+    },
+  });
+
+  const [streamingDone, setStreamingDone] = useState(false);
+  const [placeholderSpecId, setPlaceholderSpecId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -117,10 +149,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rawPrompt, setRawPrompt] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'full-spec' | 'tasks' | 'execution' | 'focus' | 'dependencies' | 'review' | 'analytics' | 'architecture' | 'file structure'>('full-spec');
   const [activeBlueprints, setActiveBlueprints] = useState<SelectedBlueprint[]>([]);
   const [selectedBlueprintForModal, setSelectedBlueprintForModal] = useState<Blueprint | null>(null);
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
@@ -135,6 +164,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [mounted, setMounted] = useState(false);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set(['quick-start']));
   const [exportSelection, setExportSelection] = useState({
     implementationPlan: true,
     architectureNotes: true,
@@ -209,7 +239,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   }, [project]);
 
-  // Sync latest spec with result
   useEffect(() => {
     if (specs && specs.length > 0) {
       const selectedSpec = activeVersionId
@@ -229,11 +258,12 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         directoryStructure: targetSpec.directoryStructure || "",
         fullMarkdownSpec: targetSpec.fullMarkdownSpec || targetSpec.coldStartGuide
       });
-    } else {
+      setStreamingDone(false);
+    } else if (!isStreaming && !streamingDone) {
       setResult(null);
       setActiveVersionId(null);
     }
-  }, [specs, activeVersionId]);
+  }, [specs, activeVersionId, isStreaming, streamingDone]);
 
   const handleExport = async () => {
     if (!result || !project) return;
@@ -434,14 +464,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       createProject.mutate("New Project", {
         onSuccess: (newProject) => {
           updateProjectQuery(newProject.id);
-          generateSpec.mutate(newProject.id, {
-            onError: (err: any) => {
-              toast.error(err.message || 'Failed to generate spec');
-            },
-            onSuccess: () => {
-              toast.success('Spec generated successfully');
-            }
-          });
         },
         onError: (err: any) => {
           toast.error(err.message || 'Failed to create project');
@@ -449,13 +471,40 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       });
       return;
     }
-    generateSpec.mutate(selectedProjectId, {
-      onError: (err: any) => {
-        toast.error(err.message || 'Failed to generate spec');
+
+    setStreamingDone(false);
+    setResult(null);
+
+    // Create placeholder spec to get version number immediately
+    try {
+      const placeholder = await createPlaceholder.mutateAsync(selectedProjectId);
+      setPlaceholderSpecId(placeholder.id);
+      setActiveVersionId(placeholder.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create spec placeholder');
+      return;
+    }
+
+    const mappedSources = (sourcesData || []).map(s => ({
+      name: s.name,
+      content: s.content,
+      type: s.type,
+    }));
+
+    streamSpec({
+      config: {
+        framework: config.framework,
+        styling: config.styling,
+        backend: config.backend,
+        tooling: config.tooling,
+        providers: config.providers,
+        payments: config.payments,
+        stateManagement: config.stateManagement,
+        sources: mappedSources,
+        selectedBlueprints: activeBlueprints,
+        customContext: rawPrompt || '',
+        rawPrompt: rawPrompt || '',
       },
-      onSuccess: () => {
-        toast.success('Spec generated successfully');
-      }
     });
   };
 
@@ -477,6 +526,17 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const activeCategoryLabel = useMemo(() => {
     return CATEGORIES.find(c => c.id === activeCategory)?.label;
   }, [activeCategory]);
+
+  const toggleAccordion = (key: string) => {
+    setOpenAccordions(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const isStreamingView = isStreaming || streamingDone;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-white/20">
@@ -789,112 +849,293 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                   <button
                     onClick={handleOptimize}
-                    disabled={generateSpec.isPending || (!selectedProjectId && !rawPrompt.trim() && (!sourcesData || sourcesData.length === 0))}
+                    disabled={isStreaming || (!selectedProjectId && !rawPrompt.trim() && (!sourcesData || sourcesData.length === 0))}
                     className="w-full py-4 bg-white hover:bg-slate-200 disabled:bg-slate-900 disabled:text-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-all shadow-xl"
                   >
-                    {generateSpec.isPending ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
+                    {isStreaming ? <><RefreshCcw className="w-4 h-4 animate-spin" /> Architecting...</> : <><Zap className="w-4 h-4" /> Generate Spec</>}
                   </button>
                 </section>
               </div>
 
               <div className="xl:col-span-7 flex flex-col min-h-[500px]">
-                {!result && !generateSpec.isPending ? (
+                {!result && !isStreamingView ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-900 rounded-xl bg-slate-950/40">
                     <PlayCircle className="w-16 h-16 text-slate-900 mb-6" />
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Architect Board</h3>
                     <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Select modules to build a production-ready implementation plan.</p>
                   </div>
-                ) : generateSpec.isPending ? (
-                  <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center animate-pulse">
-                      <RefreshCcw className="w-6 h-6 text-slate-950 animate-spin" />
-                    </div>
-                  </div>
                 ) : (
                   <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col">
+                    {/* Header Bar */}
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
-                      <div className="flex gap-2 items-center">
-
-                        {['full-spec', 'tasks', 'execution', 'focus', 'dependencies', 'review', 'analytics', 'architecture', 'file structure'].map(tab => (
-                          <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-950' : 'text-slate-500 hover:text-white'}`}>{tab}</button>
-                        ))}
-                      </div>
-
-
-
                       <div className="flex items-center gap-2">
-                        {specs && specs.length > 0 && (
-                          <div className="flex items-center gap-2 mr-2">
-                            <select
-                              value={activeVersionId || ''}
-                              onChange={(e) => setActiveVersionId(e.target.value)}
-                              className="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded px-2 py-1.5 focus:outline-none focus:border-slate-500"
-                            >
-                              {specs.map((s: any) => (
-                                <option key={s.id} value={s.id}>v{s.version}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        <button onClick={() => setIsExportModalOpen(true)} className="px-4 py-2 rounded-md bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors">
-                          <Save className="w-3 h-3" /> Export
-                        </button>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Spec Output</span>
                       </div>
+                      {!isStreamingView && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setStreamingDone(false);
+                              setResult(null);
+                              handleOptimize();
+                            }}
+                            disabled={isStreaming}
+                            className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <RefreshCcw className="w-3 h-3" /> Regenerate
+                          </button>
+                          <button onClick={() => setIsExportModalOpen(true)} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors flex items-center gap-1.5">
+                            <Save className="w-3 h-3" /> Export
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                      {activeTab === 'tasks' && (
-                        <div className="space-y-8 animate-in fade-in duration-300">
-                          <div className="p-6 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-5">
-                            <div className="p-3 bg-white rounded-md text-slate-950 shrink-0"><PlayCircle className="w-5 h-5" /></div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-2">Architectural Kickoff</h4>
-                              <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
-                                <ReactMarkdown>{result?.coldStartGuide || ''}</ReactMarkdown>
-                              </div>
+
+                    {/* Version Selector Bar */}
+                    {(() => {
+                      const placeholderSpec = placeholderSpecId ? specs?.find((s: any) => s.id === placeholderSpecId) : null;
+                      const showVersionBar = (specs && specs.length > 0) || placeholderSpec;
+
+                      if (!showVersionBar) return null;
+
+                      return (
+                        <div className="px-6 py-2.5 bg-slate-900/50 border-b border-slate-800/50 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Version</span>
+                            <div className="flex items-center gap-1.5">
+                              {(specs || []).map((s: any) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => !isStreaming && setActiveVersionId(s.id)}
+                                  disabled={isStreaming}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-black uppercase transition-all ${
+                                    activeVersionId === s.id
+                                      ? 'bg-white text-slate-950'
+                                      : 'bg-slate-800 text-slate-500 hover:text-white hover:bg-slate-700 disabled:opacity-50'
+                                  }`}
+                                >
+                                  v{s.version}
+                                  {isStreaming && s.id === placeholderSpecId && (
+                                    <Loader2 className="w-2.5 h-2.5 ml-1 inline animate-spin" />
+                                  )}
+                                </button>
+                              ))}
                             </div>
                           </div>
-                          <div className="space-y-4">{result?.implementationPlan.map((task) => (<TaskCard key={task.id} task={task} />))}</div>
+                          <div className="flex items-center gap-2">
+                            {specs && specs[0] && activeVersionId === specs[0].id && !isStreaming && (
+                              <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] font-black text-emerald-400 uppercase">Latest</span>
+                            )}
+                            {isStreaming && placeholderSpecId && (
+                              <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-400 uppercase animate-pulse">Generating</span>
+                            )}
+                            {(() => {
+                              const activeSpec = specs?.find((s: any) => s.id === activeVersionId);
+                              if (activeSpec?.createdAt && !isStreaming) {
+                                return (
+                                  <span className="text-[9px] text-slate-600 font-bold">
+                                    {new Date(activeSpec.createdAt).toLocaleDateString()}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Content: Streaming or Accordion */}
+                    {isStreamingView ? (
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <StreamingStageView streamResult={streamResult as Partial<OptimizationResult>} isLoading={isStreaming} />
+                      </div>
+                    ) : (
+                      <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
+
+                      {/* Accordion: Quick Start */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('quick-start')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <PlayCircle className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Quick Start</span>
+                          </span>
+                          {openAccordions.has('quick-start') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('quick-start') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
+                              <ReactMarkdown>{result?.coldStartGuide || ''}</ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Implementation Plan */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('tasks')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <ListTodo className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Implementation Plan</span>
+                            <span className="text-[9px] font-black text-slate-500 ml-1">{result?.implementationPlan?.length || 0} tasks</span>
+                          </span>
+                          {openAccordions.has('tasks') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('tasks') && (
+                          <div className="p-5 border-t border-slate-800 space-y-3 animate-in slide-in-from-top-1 duration-200">
+                            {result?.implementationPlan?.map((task) => (
+                              <TaskCard key={task.id} task={task} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Architecture */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('architecture')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <Cpu className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Architecture</span>
+                          </span>
+                          {openAccordions.has('architecture') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('architecture') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium">{result?.architectureNotes}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: File Structure */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('file-structure')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <FolderTree className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">File Structure</span>
+                          </span>
+                          {openAccordions.has('file-structure') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('file-structure') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <pre className="text-[10px] text-slate-200 overflow-x-auto font-mono">{result?.directoryStructure}</pre>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Full Spec */}
+                      <div className="border border-slate-800 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleAccordion('full-spec')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-white" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Full Spec</span>
+                          </span>
+                          {openAccordions.has('full-spec') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        {openAccordions.has('full-spec') && (
+                          <div className="p-5 border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                            <div className="text-xs text-slate-300 leading-relaxed font-medium prose prose-invert prose-xs max-w-none">
+                              <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accordion: Execution */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('execution')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Zap className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Execution</span>
+                            </span>
+                            {openAccordions.has('execution') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('execution') && (
+                            <div className="p-5 border-t border-slate-800 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                              <NextTaskRecommendation projectId={selectedProjectId} />
+                              <ExecutionBoard projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'full-spec' && (
-                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed font-medium animate-in fade-in prose prose-invert prose-xs max-w-none">
-                          <ReactMarkdown>{result?.fullMarkdownSpec || ''}</ReactMarkdown>
+                      {/* Accordion: Focus */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('focus')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <BadgeCheck className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Focus</span>
+                            </span>
+                            {openAccordions.has('focus') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('focus') && (
+                            <div className="p-5 border-t border-slate-800 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                              <DailyStandup projectId={selectedProjectId} />
+                              <FocusView projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'execution' && selectedProjectId && (
-                        <div className="space-y-4">
-                          <NextTaskRecommendation projectId={selectedProjectId} />
-                          <ExecutionBoard projectId={selectedProjectId} />
+                      {/* Accordion: Dependencies */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('dependencies')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Boxes className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Dependencies</span>
+                            </span>
+                            {openAccordions.has('dependencies') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('dependencies') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <DependencyGraph projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'focus' && selectedProjectId && (
-                        <div className="space-y-4">
-                          <DailyStandup projectId={selectedProjectId} />
-                          <FocusView projectId={selectedProjectId} />
+                      {/* Accordion: Review */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('review')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <ClipboardList className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Weekly Review</span>
+                            </span>
+                            {openAccordions.has('review') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('review') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <WeeklyReview projectId={selectedProjectId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {activeTab === 'dependencies' && selectedProjectId && (
-                        <DependencyGraph projectId={selectedProjectId} />
+                      {/* Accordion: Analytics */}
+                      {selectedProjectId && (
+                        <div className="border border-slate-800 rounded-lg overflow-hidden">
+                          <button onClick={() => toggleAccordion('analytics')} className="w-full px-5 py-3 bg-slate-900 flex items-center justify-between hover:bg-slate-800/80 transition-colors">
+                            <span className="flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-white" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Analytics</span>
+                            </span>
+                            {openAccordions.has('analytics') ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                          </button>
+                          {openAccordions.has('analytics') && (
+                            <div className="border-t border-slate-800 animate-in slide-in-from-top-1 duration-200">
+                              <AnalyticsBoard projectId={selectedProjectId} />
+                            </div>
+                          )}
+                        </div>
                       )}
 
-                      {activeTab === 'review' && selectedProjectId && (
-                        <WeeklyReview projectId={selectedProjectId} />
-                      )}
-
-                      {activeTab === 'analytics' && selectedProjectId && (
-                        <AnalyticsBoard projectId={selectedProjectId} />
-                      )}
-
-                      {activeTab === 'architecture' && <div className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-medium animate-in fade-in">{result?.architectureNotes}</div>}
-
-                      {activeTab === 'file structure' && <pre className="p-8 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-200 overflow-x-auto mono animate-in fade-in">{result?.directoryStructure}</pre>}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
               </div>
             </div>
           </div>

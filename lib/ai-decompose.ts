@@ -1,24 +1,14 @@
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { z } from 'zod';
 import { getTaskById, getProjectDependencies, getProjectTasks } from '@/services/taskService';
 import { openrouter, DEFAULT_MODEL, formatTaskList } from './ai-prompts';
-
-const decomposeSchema = z.object({
-  subtasks: z.array(
-    z.object({
-      title: z.string().describe('Verb-first actionable title (e.g., "Create auth middleware")'),
-      description: z.string().describe('One sentence: what this subtask accomplishes'),
-      estimateMinutes: z.number().describe('30-90 minutes'),
-      details: z.string().describe('Exact files, functions, and logic'),
-    })
-  ),
-});
+import { decomposeSchema } from './ai-schemas';
 
 export type DecomposedSubtasks = z.infer<typeof decomposeSchema>;
 
 export async function aiDecomposeTask(
   taskId: string
-): Promise<DecomposedSubtasks> {
+) {
   const task = await getTaskById(taskId);
   if (!task) throw new Error('Task not found');
 
@@ -78,12 +68,12 @@ ${siblingContext ? `ACTIVE SIBLING TASKS:\n${siblingContext}` : 'No other active
 
 Decompose into 3-5 atomic subtasks. Return as JSON.`;
 
-  const { object } = await generateObject({
+  const result = streamObject({
     model: openrouter(DEFAULT_MODEL),
     schema: decomposeSchema,
     system,
     prompt,
   });
 
-  return object;
+  return result;
 }

@@ -7,8 +7,8 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
-    const recommendation = await aiRecommendNextTask(projectId);
-    return NextResponse.json({ success: true, data: recommendation });
+    const result = await aiRecommendNextTask(projectId);
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('AI recommendation error:', error);
     return NextResponse.json(

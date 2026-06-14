@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layers, RefreshCcw, Plus, Check } from 'lucide-react';
+import { Layers, RefreshCcw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import type { DecomposedSubtasks } from '@/lib/ai-decompose';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { decomposeSchema } from '@/lib/ai-schemas';
 
 interface TaskDecomposerProps {
   taskId: string;
@@ -11,35 +12,24 @@ interface TaskDecomposerProps {
 }
 
 export function TaskDecomposer({ taskId, onImported }: TaskDecomposerProps) {
-  const [result, setResult] = useState<DecomposedSubtasks | null>(null);
-  const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const handleDecompose = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/decompose`, {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (data.success) {
-        setResult(data.data);
-      } else {
-        toast.error(data.error || 'Failed to decompose');
-      }
-    } catch {
-      toast.error('Failed to decompose task');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    object: result,
+    isLoading,
+    submit,
+  } = useObject({
+    api: `/api/tasks/${taskId}/decompose`,
+    schema: decomposeSchema,
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to decompose task');
+    },
+  });
 
   const handleImport = async () => {
-    if (!result) return;
+    if (!result?.subtasks) return;
     setImporting(true);
     try {
-      // Import each subtask by creating it via the transition endpoint pattern
-      // We'll use the existing task import mechanism
       const res = await fetch(`/api/tasks/${taskId}/decompose`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,8 +37,7 @@ export function TaskDecomposer({ taskId, onImported }: TaskDecomposerProps) {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Imported ${result.subtasks.length} subtasks`);
-        setResult(null);
+        toast.success(`Imported ${(result.subtasks || []).length} subtasks`);
         onImported?.();
       } else {
         toast.error(data.error || 'Failed to import');
@@ -60,20 +49,22 @@ export function TaskDecomposer({ taskId, onImported }: TaskDecomposerProps) {
     }
   };
 
+  const subtasks = result?.subtasks || [];
+
   return (
     <div className="space-y-3">
       {!result && (
         <button
-          onClick={handleDecompose}
-          disabled={loading}
+          onClick={() => submit({})}
+          disabled={isLoading}
           className="flex items-center gap-1 px-3 py-1.5 bg-white/10 border border-white/20 rounded text-[10px] font-bold text-white hover:bg-white/20 transition-colors disabled:opacity-50 w-full justify-center"
         >
-          {loading ? (
+          {isLoading ? (
             <RefreshCcw className="w-3 h-3 animate-spin" />
           ) : (
             <Layers className="w-3 h-3" />
           )}
-          {loading ? 'Decomposing...' : 'Decompose into Subtasks'}
+          {isLoading ? 'Decomposing...' : 'Decompose into Subtasks'}
         </button>
       )}
 
@@ -81,18 +72,18 @@ export function TaskDecomposer({ taskId, onImported }: TaskDecomposerProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-white uppercase tracking-widest">
-              {result.subtasks.length} Subtasks
+              {subtasks.length} Subtasks
             </span>
             <div className="flex gap-1">
               <button
-                onClick={() => setResult(null)}
+                onClick={() => {}}
                 className="px-2 py-1 text-[10px] text-slate-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImport}
-                disabled={importing}
+                disabled={importing || subtasks.length === 0}
                 className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
               >
                 {importing ? (
@@ -105,20 +96,20 @@ export function TaskDecomposer({ taskId, onImported }: TaskDecomposerProps) {
             </div>
           </div>
 
-          {result.subtasks.map((sub, i) => (
+          {subtasks.map((sub: any, i: number) => (
             <div
               key={i}
               className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-white">{sub.title}</p>
+                  <p className="text-xs font-bold text-white">{sub.title || '...'}</p>
                   <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
-                    {sub.description}
+                    {sub.description || '...'}
                   </p>
                 </div>
                 <span className="text-[8px] font-black text-slate-500 shrink-0">
-                  ~{sub.estimateMinutes}min
+                  ~{sub.estimateMinutes || '...'}min
                 </span>
               </div>
             </div>

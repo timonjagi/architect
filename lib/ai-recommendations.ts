@@ -1,25 +1,17 @@
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { z } from 'zod';
 import { getProjectTasks, getProjectDependencies, getExecutionSummary } from '@/services/taskService';
 import { db } from '@/lib/db';
 import { taskActivity } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { openrouter, DEFAULT_MODEL, formatTaskList, formatActivityLog, formatDependencies } from './ai-prompts';
-
-const recommendationSchema = z.object({
-  taskId: z.string().describe('Exact task ID from the list'),
-  title: z.string().describe('Task title'),
-  rationale: z.string().describe('2-3 sentence reasoning: why this task, why now, what unblocks'),
-  estimatedMinutes: z.number().describe('Realistic estimate based on scope'),
-  blockers: z.array(z.string()).describe('Active blockers for this specific task'),
-  prerequisites: z.array(z.string()).describe('Task IDs that must complete first'),
-});
+import { recommendationSchema } from './ai-schemas';
 
 export type TaskRecommendation = z.infer<typeof recommendationSchema>;
 
 export async function aiRecommendNextTask(
   projectId: string
-): Promise<TaskRecommendation> {
+) {
   const [tasks, dependencies, summary] = await Promise.all([
     getProjectTasks(projectId),
     getProjectDependencies(projectId),
@@ -77,12 +69,12 @@ ${activityLog}
 
 Apply the decision framework. Return your recommendation as JSON.`;
 
-  const { object } = await generateObject({
+  const result = streamObject({
     model: openrouter(DEFAULT_MODEL),
     schema: recommendationSchema,
     system,
     prompt,
   });
 
-  return object;
+  return result;
 }

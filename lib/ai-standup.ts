@@ -1,23 +1,17 @@
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { z } from 'zod';
 import { getProjectTasks, getExecutionSummary } from '@/services/taskService';
 import { db } from '@/lib/db';
 import { taskActivity } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { openrouter, DEFAULT_MODEL, formatTaskList, formatActivityLog } from './ai-prompts';
-
-const standupSchema = z.object({
-  yesterday: z.array(z.string()).describe('What was completed or progressed in last 24h'),
-  today: z.array(z.string()).describe('Recommended focus for today, ordered by priority'),
-  blockers: z.array(z.string()).describe('Active blockers with context'),
-  summary: z.string().describe('One-line status: N done, N active, N blocked'),
-});
+import { standupSchema } from './ai-schemas';
 
 export type DailyStandup = z.infer<typeof standupSchema>;
 
 export async function aiGenerateStandup(
   projectId: string
-): Promise<DailyStandup> {
+) {
   const [tasks, summary] = await Promise.all([
     getProjectTasks(projectId),
     getExecutionSummary(projectId),
@@ -78,12 +72,12 @@ ${blockedTasks ? `BLOCKED:\n${blockedTasks}` : 'No blockers.'}
 
 Generate standup. Return as JSON.`;
 
-  const { object } = await generateObject({
+  const result = streamObject({
     model: openrouter(DEFAULT_MODEL),
     schema: standupSchema,
     system,
     prompt,
   });
 
-  return object;
+  return result;
 }

@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Project, ProjectSpec, Source } from "../types";
 import { createClient } from "../supabase/client";
-import { optimizePrompt } from "../ai";
-import { PromptConfig } from "../types";
 
 const mapProject = (p: any): Project => ({
   id: p.id,
@@ -213,62 +211,24 @@ export function useProjectSpecs(projectId: string | null) {
   });
 }
 
-export function useGenerateSpec() {
+export function useSaveSpec() {
   const queryClient = useQueryClient();
   const supabase = createClient();
 
   return useMutation({
-    mutationFn: async (projectId: string) => {
-      // 1. Fetch project and sources for context
-      const { data: project, error: pError } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("id", projectId)
-        .single();
-
-      if (pError) throw pError;
-
-      const { data: sources, error: sError } = await supabase
-        .from("project_sources")
-        .select("*")
-        .eq("project_id", projectId);
-
-      if (sError) throw sError;
-
-      const mappedProject = mapProject(project);
-      const mappedSources = (sources || []).map(mapSource);
-
-      // 2. Prepare config for Gemini
-      const config: PromptConfig = {
-        framework: mappedProject.framework as any,
-        styling: mappedProject.styling as any,
-        backend: mappedProject.backend as any,
-        tooling: [], // Currently not stored explicitly in snake_case mapping but can be extracted if needed
-        providers: (mappedProject.notifications as any) || [],
-        payments: [mappedProject.payments as any],
-        stateManagement: mappedProject.stateManagement as any,
-        sources: mappedSources,
-        selectedBlueprints: mappedProject.blueprintConfig?.selectedBlueprints || [],
-        customContext: mappedProject.rawPrompt || ""
-      };
-
-      console.log(config);
-
-      // 3. Generate spec using Gemini SDK client-side
-      const result = await optimizePrompt(mappedProject.rawPrompt || "Generate spec", config);
-
-      // Determine version
+    mutationFn: async ({ projectId, result }: { projectId: string; result: any }) => {
       const { data: existingSpecs } = await supabase.from("project_specs").select("version").eq("project_id", projectId);
       const versionCount = existingSpecs?.length || 0;
       const nextVersion = `1.0.${versionCount}`;
 
-      // 4. Save to project_specs via Supabase
+      const { data: project } = await supabase.from("projects").select("name").eq("id", projectId).single();
+
       const { data: newSpec, error: insertError } = await supabase
         .from("project_specs")
         .insert({
           project_id: projectId,
           version: nextVersion,
-          title: mappedProject.name + " Spec",
+          title: (project?.name || "Project") + " Spec",
           cold_start_guide: result.coldStartGuide,
           directory_structure: result.directoryStructure,
           implementation_plan: { plan: result.implementationPlan },
@@ -282,7 +242,73 @@ export function useGenerateSpec() {
       if (insertError) throw insertError;
       return mapProjectSpec(newSpec);
     },
-    onSuccess: (data: any, projectId) => {
+    onSuccess: (data: any, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "specs"] });
+    },
+  });
+}
+
+export function useCreatePlaceholderSpec() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data: existingSpecs } = await supabase.from("project_specs").select("version").eq("project_id", projectId);
+      const versionCount = existingSpecs?.length || 0;
+      const nextVersion = `1.0.${versionCount}`;
+
+      const { data: project } = await supabase.from("projects").select("name").eq("id", projectId).single();
+
+      const { data: newSpec, error } = await supabase
+        .from("project_specs")
+        .insert({
+          project_id: projectId,
+          version: nextVersion,
+          title: (project?.name || "Project") + " Spec",
+          cold_start_guide: "",
+          directory_structure: "",
+          implementation_plan: {},
+          tasks: [],
+          architecture_notes: "",
+          full_markdown_spec: ""
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapProjectSpec(newSpec);
+    },
+    onSuccess: (data: any, projectId: string) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "specs"] });
+    },
+  });
+}
+
+export function useUpdateSpec() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({ specId, projectId, result }: { specId: string; projectId: string; result: any }) => {
+      const { data: updated, error } = await supabase
+        .from("project_specs")
+        .update({
+          cold_start_guide: result.coldStartGuide,
+          directory_structure: result.directoryStructure,
+          implementation_plan: { plan: result.implementationPlan },
+          tasks: result.implementationPlan,
+          architecture_notes: result.architectureNotes,
+          full_markdown_spec: result.fullMarkdownSpec
+        })
+        .eq("id", specId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapProjectSpec(updated);
+    },
+    onSuccess: (data: any, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["projects", projectId, "specs"] });
     },
   });
