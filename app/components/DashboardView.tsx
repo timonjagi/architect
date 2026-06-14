@@ -858,17 +858,6 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Spec Output</span>
-                        {specs && specs.length > 0 && (
-                          <select
-                            value={activeVersionId || ''}
-                            onChange={(e) => setActiveVersionId(e.target.value)}
-                            className="bg-slate-950 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded px-2 py-1.5 focus:outline-none focus:border-slate-500 ml-2"
-                          >
-                            {specs.map((s: any) => (
-                              <option key={s.id} value={s.id}>v{s.version}</option>
-                            ))}
-                          </select>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -887,6 +876,41 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Version Selector Bar */}
+                    {specs && specs.length > 0 && (
+                      <div className="px-6 py-2.5 bg-slate-900/50 border-b border-slate-800/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Version</span>
+                          <div className="flex items-center gap-1.5">
+                            {specs.map((s: any, i: number) => (
+                              <button
+                                key={s.id}
+                                onClick={() => setActiveVersionId(s.id)}
+                                className={`px-2.5 py-1 rounded text-[10px] font-black uppercase transition-all ${
+                                  activeVersionId === s.id
+                                    ? 'bg-white text-slate-950'
+                                    : 'bg-slate-800 text-slate-500 hover:text-white hover:bg-slate-700'
+                                }`}
+                              >
+                                v{s.version}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {specs[0] && activeVersionId === specs[0].id && (
+                            <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] font-black text-emerald-400 uppercase">Latest</span>
+                          )}
+                          {specs.find((s: any) => s.id === activeVersionId)?.created_at && (
+                            <span className="text-[9px] text-slate-600 font-bold">
+                              {new Date(specs.find((s: any) => s.id === activeVersionId)!.created_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
 
                       {/* Accordion: Quick Start */}
