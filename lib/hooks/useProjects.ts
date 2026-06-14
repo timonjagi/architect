@@ -247,3 +247,69 @@ export function useSaveSpec() {
     },
   });
 }
+
+export function useCreatePlaceholderSpec() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data: existingSpecs } = await supabase.from("project_specs").select("version").eq("project_id", projectId);
+      const versionCount = existingSpecs?.length || 0;
+      const nextVersion = `1.0.${versionCount}`;
+
+      const { data: project } = await supabase.from("projects").select("name").eq("id", projectId).single();
+
+      const { data: newSpec, error } = await supabase
+        .from("project_specs")
+        .insert({
+          project_id: projectId,
+          version: nextVersion,
+          title: (project?.name || "Project") + " Spec",
+          cold_start_guide: "",
+          directory_structure: "",
+          implementation_plan: {},
+          tasks: [],
+          architecture_notes: "",
+          full_markdown_spec: ""
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapProjectSpec(newSpec);
+    },
+    onSuccess: (data: any, projectId: string) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "specs"] });
+    },
+  });
+}
+
+export function useUpdateSpec() {
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({ specId, projectId, result }: { specId: string; projectId: string; result: any }) => {
+      const { data: updated, error } = await supabase
+        .from("project_specs")
+        .update({
+          cold_start_guide: result.coldStartGuide,
+          directory_structure: result.directoryStructure,
+          implementation_plan: { plan: result.implementationPlan },
+          tasks: result.implementationPlan,
+          architecture_notes: result.architectureNotes,
+          full_markdown_spec: result.fullMarkdownSpec
+        })
+        .eq("id", specId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapProjectSpec(updated);
+    },
+    onSuccess: (data: any, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "specs"] });
+    },
+  });
+}

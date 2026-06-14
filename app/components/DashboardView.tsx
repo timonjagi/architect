@@ -7,11 +7,11 @@ import {
   ListTodo, FolderTree, Info, ClipboardList, PlayCircle, BadgeCheck,
   ChevronDown, ChevronUp, UserCheck, ChevronLeft, Filter, Boxes,
   Check, FileUp, FileCode, HardDrive, CreditCard, Bell, AlertCircle,
-  Save, Cpu
+  Save, Cpu, Loader2
 } from 'lucide-react';
 import { Framework, Styling, Backend, PromptConfig, OptimizationResult, Source, TaskItem, SelectedBlueprint, NotificationProvider, PaymentProvider, ProjectSpec, StateManagement } from '../../lib/types';
 import { CATEGORIES, BLUEPRINTS, Blueprint } from '../../lib/blueprints';
-import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useSaveSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
+import { useProjects, useProject, useCreateProject, useUpdateProject, useProjectSpecs, useSaveSpec, useCreatePlaceholderSpec, useUpdateSpec, useSources, useAddSource, useDeleteSource } from '../../lib/hooks/useProjects';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { architectureSchema } from '../../lib/ai-schemas';
 import { createClient } from '../../lib/supabase/client';
@@ -105,6 +105,8 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const saveSpec = useSaveSpec();
+  const createPlaceholder = useCreatePlaceholderSpec();
+  const updateSpec = useUpdateSpec();
   const { data: specs } = useProjectSpecs(selectedProjectId);
   const { data: sourcesData, isLoading: sourcesLoading, isError: sourcesError } = useSources(selectedProjectId);
   const addSource = useAddSource();
@@ -119,9 +121,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     api: `/api/projects/${selectedProjectId || 'placeholder'}/generate-spec`,
     schema: architectureSchema,
     onFinish: async ({ object }: { object: OptimizationResult | undefined; error: Error | undefined }) => {
-      if (object && selectedProjectId) {
+      if (object && selectedProjectId && placeholderSpecId) {
         try {
-          await saveSpec.mutateAsync({ projectId: selectedProjectId, result: object as OptimizationResult });
+          await updateSpec.mutateAsync({ specId: placeholderSpecId, projectId: selectedProjectId, result: object as OptimizationResult });
           toast.success('Spec generated successfully');
         } catch (err: any) {
           toast.error(err.message || 'Failed to save spec');
@@ -136,6 +138,7 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   });
 
   const [streamingDone, setStreamingDone] = useState(false);
+  const [placeholderSpecId, setPlaceholderSpecId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -471,6 +474,16 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     setStreamingDone(false);
     setResult(null);
+
+    // Create placeholder spec to get version number immediately
+    try {
+      const placeholder = await createPlaceholder.mutateAsync(selectedProjectId);
+      setPlaceholderSpecId(placeholder.id);
+      setActiveVersionId(placeholder.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create spec placeholder');
+      return;
+    }
 
     const mappedSources = (sourcesData || []).map(s => ({
       name: s.name,
@@ -851,67 +864,94 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Architect Board</h3>
                     <p className="text-slate-600 max-w-sm mx-auto text-sm leading-relaxed">Select modules to build a production-ready implementation plan.</p>
                   </div>
-                ) : isStreamingView ? (
-                  <StreamingStageView streamResult={streamResult as Partial<OptimizationResult>} isLoading={isStreaming} />
                 ) : (
                   <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 flex flex-col">
+                    {/* Header Bar */}
                     <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Spec Output</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setStreamingDone(false);
-                            setResult(null);
-                            handleOptimize();
-                          }}
-                          disabled={isStreaming}
-                          className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          <RefreshCcw className="w-3 h-3" /> Regenerate
-                        </button>
-                        <button onClick={() => setIsExportModalOpen(true)} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors flex items-center gap-1.5">
-                          <Save className="w-3 h-3" /> Export
-                        </button>
-                      </div>
+                      {!isStreamingView && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setStreamingDone(false);
+                              setResult(null);
+                              handleOptimize();
+                            }}
+                            disabled={isStreaming}
+                            className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <RefreshCcw className="w-3 h-3" /> Regenerate
+                          </button>
+                          <button onClick={() => setIsExportModalOpen(true)} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-slate-700 transition-colors flex items-center gap-1.5">
+                            <Save className="w-3 h-3" /> Export
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Version Selector Bar */}
-                    {specs && specs.length > 0 && (
-                      <div className="px-6 py-2.5 bg-slate-900/50 border-b border-slate-800/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Version</span>
-                          <div className="flex items-center gap-1.5">
-                            {specs.map((s: any, i: number) => (
-                              <button
-                                key={s.id}
-                                onClick={() => setActiveVersionId(s.id)}
-                                className={`px-2.5 py-1 rounded text-[10px] font-black uppercase transition-all ${
-                                  activeVersionId === s.id
-                                    ? 'bg-white text-slate-950'
-                                    : 'bg-slate-800 text-slate-500 hover:text-white hover:bg-slate-700'
-                                }`}
-                              >
-                                v{s.version}
-                              </button>
-                            ))}
+                    {(() => {
+                      const placeholderSpec = placeholderSpecId ? specs?.find((s: any) => s.id === placeholderSpecId) : null;
+                      const showVersionBar = (specs && specs.length > 0) || placeholderSpec;
+
+                      if (!showVersionBar) return null;
+
+                      return (
+                        <div className="px-6 py-2.5 bg-slate-900/50 border-b border-slate-800/50 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Version</span>
+                            <div className="flex items-center gap-1.5">
+                              {(specs || []).map((s: any) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => !isStreaming && setActiveVersionId(s.id)}
+                                  disabled={isStreaming}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-black uppercase transition-all ${
+                                    activeVersionId === s.id
+                                      ? 'bg-white text-slate-950'
+                                      : 'bg-slate-800 text-slate-500 hover:text-white hover:bg-slate-700 disabled:opacity-50'
+                                  }`}
+                                >
+                                  v{s.version}
+                                  {isStreaming && s.id === placeholderSpecId && (
+                                    <Loader2 className="w-2.5 h-2.5 ml-1 inline animate-spin" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {specs && specs[0] && activeVersionId === specs[0].id && !isStreaming && (
+                              <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] font-black text-emerald-400 uppercase">Latest</span>
+                            )}
+                            {isStreaming && placeholderSpecId && (
+                              <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] font-black text-blue-400 uppercase animate-pulse">Generating</span>
+                            )}
+                            {(() => {
+                              const activeSpec = specs?.find((s: any) => s.id === activeVersionId);
+                              if (activeSpec?.createdAt && !isStreaming) {
+                                return (
+                                  <span className="text-[9px] text-slate-600 font-bold">
+                                    {new Date(activeSpec.createdAt).toLocaleDateString()}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {specs[0] && activeVersionId === specs[0].id && (
-                            <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] font-black text-emerald-400 uppercase">Latest</span>
-                          )}
-                          {specs.find((s: any) => s.id === activeVersionId)?.created_at && (
-                            <span className="text-[9px] text-slate-600 font-bold">
-                              {new Date(specs.find((s: any) => s.id === activeVersionId)!.created_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
-                    <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
+                    {/* Content: Streaming or Accordion */}
+                    {isStreamingView ? (
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <StreamingStageView streamResult={streamResult as Partial<OptimizationResult>} isLoading={isStreaming} />
+                      </div>
+                    ) : (
+                      <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
 
                       {/* Accordion: Quick Start */}
                       <div className="border border-slate-800 rounded-lg overflow-hidden">
@@ -1093,8 +1133,9 @@ export const DashboardView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       )}
 
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
               </div>
             </div>
           </div>
